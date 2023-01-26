@@ -202,6 +202,4 @@ def update_dev_info(dev_id):
     return render_template('update-dev.html',
                            dev_to_update=dev_to_update, form=form, dev_id=dev_id)
 
-@app.route('/test')
-def test():
-    return "Test"
+#test change
