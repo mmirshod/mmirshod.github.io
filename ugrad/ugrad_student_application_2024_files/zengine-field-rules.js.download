@@ -1,0 +1,237 @@
+var rules = {};
+var state = {};
+var backup = {};
+var evalRulesForForm = function($form) {
+
+	var record = getRecord();
+	var formKey = $form.data('wg-identifier');
+	var rulesSet = rules[formKey];
+
+	$.each(rulesSet, function(fieldId, fieldRules) {
+
+		if (!(fieldRules && fieldRules.show && fieldRules.show.filter)) {
+			// No field rules exist for this field - nothing to do
+			return;
+		}
+
+		var rowName = '#row' + fieldId;
+
+		function checkFieldRules() {
+
+			var currentMatch = znFilterMatcher.recordMatchesFilter(record, fieldRules.show.filter);
+
+			/*
+			 * the purpose of the state objects is to prevent showField/hideField
+			 * functions from being called when a field is already shown/hidden
+			 */
+			if (currentMatch && !state[fieldId]) {
+				showField();
+			} else if (!currentMatch && state[fieldId]) {
+				hideField();
+			} else {
+				// no change; nothing to do
+			}
+			state[fieldId] = currentMatch;
+		}
+
+		function showField() {
+			var $recordField = selectFieldValue(fieldId);
+			if ($recordField.length === 1) {
+				// Most inputs
+				$recordField.val(backup[fieldId]);
+			} else {
+				// Checkbox + Radio
+				$recordField.each(function(i, element) {
+					var index = backup[fieldId].indexOf($(element).val());
+					if (index >= 0) {
+						$(element).prop('checked', true);
+					}
+				});
+			}
+			backup[fieldId] = null;
+
+			$(rowName).show();
+			$('[for=\'row' + fieldId + '\']').show();
+		}
+
+		function hideField() {
+			var $recordField = selectFieldValue(fieldId);
+
+			if ($recordField.length === 1) {
+				// Most inputs
+				backup[fieldId] = $recordField.val();
+				$recordField.val([]); // Clearing inputs with [] because it also clears multi-value dropdowns
+			} else {
+				// Checkbox + Radio
+				var getFieldValue = function() {
+					return $(this).val();
+				};
+
+				backup[fieldId] = $recordField.filter(':checked').map(getFieldValue).get();
+				$recordField.removeAttr('checked');
+			}
+
+			$(rowName).hide();
+			$('[for=\'row' + fieldId + '\']').hide();
+		}
+
+		checkFieldRules();
+	});
+
+	/**
+	 * create a record object from form data
+	 *
+	 */
+	function getRecord() {
+
+		var recordObj = {};
+		$('.form-group').each(function(i, fieldRow) {
+
+			// TODO: need to add attributes for folder.id, record.title, draft
+
+			var fieldId = fieldRow.id;
+			fieldId = fieldId.replace('row', '');
+
+			recordObj['field' + fieldId] = getFieldValue(fieldRow);
+
+		});
+
+		return recordObj;
+	}
+
+
+
+};
+
+var attachRulesListenersToInputs = function($form) {
+	$form.find('.form-group select, .form-group input[type="radio"], .form-group input[type="checkbox"]').change(triggerRules);
+	$form.find('.form-group input[type="text"], .form-group input[type="number"], .form-group textarea').blur(triggerRules);
+	$form.find('.file-name-display').change(triggerRules);
+	$form.find('.datepicker-input').on('dp.change', triggerRules);
+};
+
+// uses global variable: rules
+var setRulesAndState = function($form) {
+	var formKey = $form.data('wg-identifier');
+	rules[formKey] = [];
+	$form.find('.form-group').each(function(id, fieldRow) {
+		var fieldId = fieldRow.id.replace('row', '');
+		if (fieldId) {
+			var rulesSettings = $(fieldRow).find('.rules-settings').val();
+			if (rulesSettings) {
+				rules[formKey][fieldId] = JSON.parse(rulesSettings);
+				state[fieldId] = true;
+			}
+		}
+	});
+};
+
+var triggerRules = function() {
+	var $form = $($(this).parents('.wg-eval-rules'));
+	return evalRulesForForm($form);
+};
+
+var enableRulesForForm = function($form) {
+	if (!$form.data('wg-identifier')) {
+		console.error('Element must have a data-wg-identifier attribute to evaluate field rules.');
+	}
+
+	setRulesAndState($form);
+	attachRulesListenersToInputs($form);
+	evalRulesForForm($form);
+	$form.show();
+	formEngine.checkpoint();
+};
+
+$(function() {
+	$('.wg-eval-rules').each(function(i, form) {
+		enableRulesForForm($(form));
+	});
+});
+
+
+/**
+ * get the record value for a specific field row
+ *
+ */
+var getFieldValue = function(fieldRow) {
+
+	var fieldId = fieldRow.id;
+	fieldId = fieldId.replace('row', '');
+	var recordValueField = selectFieldValue(fieldId);
+
+	var recordValue = recordValueField.val();
+
+	if ($(fieldRow).find('.field-type').val() === 'radio') {
+		if ($(fieldRow).find('input[type="radio"]').length > 0) { // input mode
+			recordValue = $(fieldRow).find('input[type="radio"]:checked').val() || null;
+		}
+		else { // print mode
+			recordValue = $(fieldRow).find('input[name="data[form]['+fieldId+']"]').val();
+		}
+	}
+
+	if ($(fieldRow).find('.field-type').val() === 'checkbox') {
+		if ($(fieldRow).find('input[type="checkbox"]').length > 0) { // input mode
+			var selector = 'input[type="checkbox"]:checked';
+		}
+		else { // print mode
+			var selector = 'input[name="data[form]['+fieldId+'][]"]';
+		}
+
+		var vals = [];
+		$(fieldRow).find(selector).each(function(i, el) {
+			vals.push($(el).val());
+		});
+		recordValue = vals;
+	}
+
+	if ($(fieldRow).find('.field-type').val() === 'dropdown') {
+		if ($(fieldRow).find('select').length > 0) { // input mode
+			if ($(fieldRow).find('select').attr('multiple') === 'multiple') { // multiple
+				if ($(fieldRow).find('select').val()) {
+					recordValue = $(fieldRow).find('select').val();
+				}
+			}
+		}
+		else { // print mode
+			if ($(fieldRow).find('input[name="data[form]['+fieldId+'][]"]').length > 0) { // multiple
+				var vals = [];
+				$(fieldRow).find('input[name="data[form]['+fieldId+'][]"]').each(function(i, el) {
+					vals.push($(el).val());
+				});
+				recordValue = vals;
+			}
+		}
+	}
+
+	// Date reformat
+	if (recordValueField.hasClass('datepicker-input') || $(fieldRow).find('.field-type').val() === 'date-picker') {
+		var datePieces = recordValue.split('/');
+		if (datePieces.length === 3) {
+			recordValue = datePieces[2] + '-' + datePieces[0] + '-' + datePieces[1];
+		}
+	}
+
+	// File uploads
+	if (recordValueField.hasClass('upload-hash-holder')) {
+		recordValueField = $("[name='data[Filename][" + fieldId + "]']");
+
+		recordValue = recordValueField.val();
+	}
+
+	// Numeric
+	if ($(fieldRow).find('.field-type').val() === 'numeric') {
+		recordValue = recordValue.replace(/,/g, '');
+	}
+
+	if (recordValue == '') {
+		recordValue = null;
+	}
+
+	return recordValue;
+};
+
+var selectFieldValue = function(fieldId) {
+		return $("[name^='data[form]["+fieldId+"]']:not(.field-empty-value)");
+	};

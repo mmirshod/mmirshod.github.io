@@ -1,0 +1,197 @@
+$(function() {
+
+	// Sorting functionality.
+	var $orderWidget = $('#task-order-switcher');
+	var $taskContainer = $('.task-container');
+	if ($orderWidget.length && $taskContainer.length) {
+		$orderWidget.on('change', function () {
+			$taskContainer.children('.sp-task').each(function(i, el){
+				$taskContainer.prepend(el);
+			});
+		});
+	}
+
+	var submitBlock = function(e) {
+
+		var elem = $(this);
+
+		var startLoading = function() {
+			elem.find('button').attr('disabled', 'disabled');
+		};
+
+		var stopLoading = function() {
+			elem.find('button').removeAttr('disabled');
+		};
+
+		startLoading();
+
+		var complete = function(jqXHR) {
+			var data = $.parseJSON(jqXHR.responseText);
+			if (data.redirectUrl) {
+				window.location.href = data.redirectUrl;
+				return;
+			}
+			stopLoading();
+		};
+
+		var $t = $(this);
+
+		wg.ajax({
+			url: $t.attr('action'),
+			type: $t.attr('method'),
+			dataType: 'json',
+			data: $t.serialize(),
+			complete: complete
+		});
+
+		return false;
+	};
+
+	var listingSortByColumn = function(e) {
+		var $table = $(".sp-listing-sort-by-table");
+		var sortby =  $(e.currentTarget).data("columnid");
+		var sortdir =  $(e.currentTarget).data("direction");
+		//next click will use reverse order
+		$(e.currentTarget).data("direction", (sortdir === 'up' ? 'down' : 'up'));
+		var rows = $(".sp-listing-sort-by-row");
+		if (sortby === 'status') {
+				sortby = $($(rows[0]).children()).length-2; //status column is always the one before the last column
+		}
+		rows.sort(function(a,b){
+			var vala = $($(a).children()[sortby]).html().trim();
+			var valb = $($(b).children()[sortby]).html().trim();
+			var result = 0;
+			if (vala < valb) {
+				result = 1;
+			} else if (vala > valb) {
+				result = -1;
+			}
+			//if direction is down return inverse result
+			if (sortdir === 'down') {
+				return result;
+			} else {
+				return -1 * result;
+			}
+
+		});
+		$.each(rows, function(index, row) {
+			$table.children('tbody').append(row);
+		});
+	}
+
+	$(".sp-listing-sort-by-column").click(listingSortByColumn);
+
+	$('form.block-submit').submit(submitBlock);
+
+	// The rest of this file only applies in the context of a form.
+	var $theForm = $('form.sp-input-form');
+	if ($theForm.length === 0) {
+		return;
+	}
+
+	// Simple debounce implementation for performance.
+	// Since we don't already have something like this available here let's just add this.
+	// Shamelessly copied from here: https://davidwalsh.name/javascript-debounce-function
+	function simpleDebounce(func, wait, immediate) {
+		var timeout;
+		return function() {
+			var context = this, args = arguments;
+			var later = function() {
+				timeout = null;
+				if (!immediate) func.apply(context, args);
+			};
+			var callNow = immediate && !timeout;
+			clearTimeout(timeout);
+			timeout = setTimeout(later, wait);
+			if (callNow) func.apply(context, args);
+		};
+	}
+
+	// Cache some frequently-used selectors.
+	var $saveDraftBtn = $('.btn-save-input-draft');
+	var $submitBtn = $('.btn-save-input');
+	var $lastCompleted = $('.complete-time-container');
+	var isComplete = $lastCompleted.length > 0;
+	var $topSubmitArea = $('.form-submit-area.top');
+	var $bottomSubmitArea = $('.form-submit-area.bottom');
+
+	// Callback to determine whether the top submit area is in the viewport and, if not, display
+	// the bottom one.
+	var submitAreaHandler = function() {
+		var topSubmitBounds = $topSubmitArea.get(0).getBoundingClientRect();
+
+		if (topSubmitBounds.y < 0 && topSubmitBounds.y + topSubmitBounds.height <= 0) {
+			$bottomSubmitArea.show();
+		} else {
+			$bottomSubmitArea.hide();
+		}
+	};
+
+	if ($topSubmitArea.length) {
+		$(window).on('scroll resize', simpleDebounce(submitAreaHandler, 150));
+	}
+
+	// Format last completed saved time when available.
+	if (isComplete) {
+		var d = $lastCompleted.attr('data-time');
+		if (d) {
+		  var dd = new Date(d);
+      try {
+        $lastCompleted.html(dd.toLocaleDateString() + ' at ' + dd.toLocaleTimeString());
+        $('.last-save-indicator').show();
+      } catch(e) {
+        // Fail silently.
+      }
+    }
+	}
+
+	var saveDraftInput = function() {
+		return formEngine.save({
+			draft: true
+		});
+	};
+
+	var saveInput = function() {
+		return formEngine.save({
+			draft: false,
+			complete: function () {
+				var count = $('.field-error.error-active').length || 1;
+				// Hide success message if present.
+				$('.form-complete-indicator.success-block').hide();
+				// Display error message 0 will be replaced with count.
+				var txt = '0 field(s) still requires attention.'
+
+				translateText(txt).then(function(translation) {
+					var text = (translation ? translation.get(txt) : txt).replace('0', count);
+					$('.form-complete-indicator.error-block').html(text).show();
+				});
+			}
+		});
+	};
+
+	var closeInput = function() {
+		var $t = $(this);
+		var url = $t.attr('data-href');
+		var result = true;
+		var closeMessage = 'This form contains un-saved changes, closing it will discard them. Are you sure you want to continue?'
+
+		if (formEngine.isDirty()) {
+			translateText(closeMessage).then(function(translation) {
+				result = window.confirm(translation ? translation.get(closeMessage) : closeMessage);
+			});
+		}
+
+		if (result) {
+			window.location.href = url;
+		}
+	};
+
+	$theForm.submit(saveDraftInput);
+	$submitBtn.click(saveInput);
+	$saveDraftBtn.click(saveDraftInput);
+	$('.btn-close').click(closeInput);
+
+	if ($theForm.find('.enable-auto-save').val()) {
+		formEngine.setAutoSave();
+	}
+});

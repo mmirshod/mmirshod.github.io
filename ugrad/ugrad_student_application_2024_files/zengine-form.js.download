@@ -1,0 +1,879 @@
+$(function() {
+
+	$('.datepicker-input').datetimepicker({
+		format: 'MM/DD/YYYY',
+		locale:ReadCookie('translation_language'),
+		useStrict:true
+	});
+
+	//initialize tooltips
+	$(function () {
+		$('[data-toggle="tooltip"]').tooltip({html: true});
+	});
+
+	//file upload
+	$('.ajax-file-upload').each(function () {
+		$(this).fileupload({
+			dataType: 'json',
+			dropZone:$('#' + $(this).attr('data-upload-template-id')),
+			submit: function(e, data) {
+				var maxsize = $(this).data('maxsize');
+				var allowedExtensions = $(this).data('extensions').toLowerCase().split(';');
+				var extension = data.files[0].name.split('.').slice(-1).pop().toLowerCase();
+
+				if (($(this).data('extensions') != '*.*') && allowedExtensions.indexOf(extension) < 0) {
+					alert('The file type for ' + data.files[0].name + ' is not supported');
+					return false;
+				}
+				if (data.files[0].size > (maxsize * 1024 * 1024)) {
+					alert('The file ' + data.files[0].name + ' is too large. The limit is ' + maxsize + 'MB.');
+					return false;
+				}
+				uploadSetLoading($(this).parent().parent());
+			},
+			done: function(e, data) {
+				if (!data.result.success) uploadSetError($(this).parent().parent(), data.result.message);
+				else uploadSetSuccess($(this).parent().parent(), data.result.data.hash, data.files[0].name);
+				$(this).parents('.form-group').trigger('validateRow');
+			}
+		});
+	});
+
+	$('.file-remover').click(function() {
+		uploadClear($(this).parent());
+		return false;
+	});
+
+	var $form = $('form.wg-submittable');
+
+	//calculation fields
+	$form.find('.form-group select, .form-group input[type="radio"], .form-group input[type="checkbox"]').change(runCalculations);
+	$form.find('.form-group input[type="text"], .form-group input[type="number"], .form-group textarea').keyup(runCalculations);
+	runCalculations();
+
+	//validation listeners
+	$form.find('.form-group input[type="text"], .form-group input[type="number"], .form-group textarea').blur(function(e) {
+		validateRow($(e.target).parents('.form-group'));
+	});
+	$form.find('.form-group select, .form-group input[type="radio"], .form-group input[type="checkbox"]').change(function(e) {
+		validateRow($(e.target).parents('.form-group'));
+	});
+	$('.form-group').on('validateRow', function() {
+		validateRow($(this));
+	});
+
+	//submit listener
+	$('.form-submit-area .btn-save-complete').click(triggerValidation);
+
+	//back-end errors
+	if ($('.backend-error').length) {
+		$('html, body').animate({scrollTop: $('.backend-error').offset().top-30}, 1000);
+	}
+
+	//field responses as clickable links
+	$(document).on('click', '.external-link', function(event) {
+		$('#external-link-warning').modal('show');
+		var targetLink = $(this).attr('href');
+		$('.external-link-go').attr('href', targetLink);
+		$('.external-link-show').text(targetLink.replace(/https?:\/\//gi, ''));
+		return false;
+	});
+	$(document).on('click', '#external-link-warning .external-link-go', function() {
+		$('#external-link-warning').modal('hide');
+	});
+
+});
+
+
+//
+//	Calculations
+//
+var runCalculations = function() {
+
+	var formatNumber = function(number, precision) {
+		var bigNumber = new BigNumber(String(number));
+		return bigNumber.toFormat(precision);
+	};
+
+	var formatAndSetValue = function($input, value) {
+		var precision = $input.data('precision');
+
+		var val = '';
+
+		if (precision === '') {
+			val = value;
+		}
+		else if (isNaN(value) || value === '') {
+			val = '';
+		}
+		else {
+			val = formatNumber(value, precision);
+		}
+
+		$input.val(val);
+	};
+
+	$('.calculation-field').each(function(i, el) {
+		var formula = $(el).children('.calculation-formula').val().replace(/\s+/g, '');
+		var expression = formula.replace(/\[Field[0-9]+\]/g, function(field) {
+			var fieldId = field.substring(0, field.length-1).substring(6);
+			var value = getRowValue($('#row'+fieldId));
+			if (value.length === 0) return 0;
+			if (isNaN(Number(value))) return 0;
+			return Number(value);
+		});
+		var result = '';
+
+		if (/^[0-9()+\-*/.]+$/.test(expression)) { //eval only numbers, decimal point, parenthesis, +, -, * and /
+			try {
+				result = eval(expression);
+			}
+			catch (error) {
+				result = '';
+			}
+		}
+
+		if (!isFinite(result)) {
+			result = '';
+		}
+
+		formatAndSetValue($(el).children('.calculation-display'), result);
+		$(el).children('.calculation-display').change();
+	});
+};
+
+
+//
+//	File upload
+//
+var setUploadElementStatus = function(element, text, statusClass) {
+	var $input = $(element).parent().siblings('.file-name-display');
+	$input.val(text);
+	$input.parent().attr('class', statusClass);
+};
+
+var uploadSetSuccess = function($row, hash, fileName) {
+	$row.find('.upload-name-holder, .file-name-display').val(fileName);
+	$row.find('.upload-name-holder, .file-name-display').change();
+	$row.find('.upload-hash-holder').val(hash);
+	$row.find('.ajax-file-upload').removeAttr('disabled');
+	$row.attr('class', 'has-success');
+
+	showRemover($row);
+	enableSubmit();
+};
+
+var uploadSetError = function($row, message) {
+	$row.find('.file-name-display').val('Error uploading file' + (message ? ': ' + message : ''));
+	$row.find('.file-name-display').change();
+	$row.find('.upload-name-holder, .upload-hash-holder').val('')
+	$row.find('.ajax-file-upload').removeAttr('disabled');
+	$row.attr('class', 'has-error');
+
+	hideRemover($row);
+	enableSubmit();
+};
+
+var uploadSetLoading = function($row) {
+	$row.find('.file-name-display').val('Uploading file...');
+	$row.find('.file-name-display').change();
+	$row.find('.upload-name-holder, .upload-hash-holder').val('')
+	$row.find('.ajax-file-upload').attr('disabled', 'disabled');
+	$row.attr('class', 'has-warning file-upload-in-progress');
+
+	hideRemover($row);
+	disableSubmit();
+};
+
+var uploadClear = function($row) {
+	$row.find('.upload-name-holder, .file-name-display').val('');
+	$row.find('.upload-name-holder, .file-name-display').change();
+	$row.find('.upload-hash-holder').val('cleared');
+	$row.removeAttr('class');
+
+	hideRemover($row);
+};
+
+var hideRemover = function($row) {
+	$row.find('.file-remover').addClass('hidden');
+	$row.find('.file-downloader').addClass('hidden');
+	$row.find('.file-uploader').addClass('hidden');
+	$row.find('.file-tip').removeClass('hidden');
+};
+
+var showRemover = function($row) {
+	$row.find('.file-remover').removeClass('hidden');
+	$row.find('.file-tip').addClass('hidden');
+};
+
+var disableSubmit = function() {
+	$('.form-submit-area button, .form-submit-area a').attr('disabled', 'disabled');
+};
+
+var enableSubmit = function() {
+	if ($('.file-upload-in-progress').length == 0) {
+		$('.form-submit-area button, .form-submit-area a').removeAttr('disabled');
+	}
+};
+
+var updateUploadFields = function() {
+	$('.upload-hash-holder').each(function(i, el) {
+		if ($(el).val().length >= 40) {
+			$(el).val('autofilled');
+		}
+	});
+};
+
+
+//
+//	Numeric
+//
+$(function() {
+
+	var integerMaxDigits = 16;
+	var highestNumber = new BigNumber('9999999999999999.99999999');
+	var lowestNumber = new BigNumber('-9999999999999999.99999999');
+
+	var allowedCharacters = [
+		48, 49, 50, 51, 52, 53, 54, 55, 56, 57, // 0 to 9
+		96, 97, 98, 99, 100, 101, 102, 103, 104, 105, // 0 to 9 on numpad
+		190, // decimal point
+		110 // decimal point on numpad
+	];
+
+	var allowedControls = [
+		37, 38, 39, 40, // arrow keys
+		9, // tab
+		189, // minus sign
+		109, // minus sign on numpad
+		8, // backspace
+		46 // delete
+	];
+
+	var isDigit = function(keyCode) {
+		var isDigitInRegularKeyboard = keyCode >= 48 && keyCode <= 57;
+		var isDigitInNumpad = keyCode >= 96 && keyCode <= 105;
+		return isDigitInRegularKeyboard || isDigitInNumpad;
+	};
+
+	var isDecimalPoint = function(keyCode) {
+		return keyCode === 190 || keyCode === 110;
+	};
+
+	var isMinusSign = function(keyCode) {
+		return keyCode === 189 || keyCode === 109;
+	};
+
+	var isAllowedCharacter = function(keyCode) {
+		return allowedCharacters.indexOf(keyCode) >= 0;
+	};
+
+	var isAllowedControl = function(keyCode) {
+		return allowedControls.indexOf(keyCode) >= 0;
+	};
+
+
+
+	var removeCommas = function($input) {
+		$input.val($input.val().replace(/,/g, ''));
+	};
+
+
+
+	var keyCombinationIsValid = function(event) {
+
+		if (event.ctrlKey || event.metaKey) {
+			return true;
+		}
+
+		if (event.altKey || event.shiftKey) {
+			return isAllowedControl(event.keyCode);
+		}
+
+		return isAllowedCharacter(event.keyCode) || isAllowedControl(event.keyCode);
+	};
+
+	var invalidKeyCombination = function(event) {
+		return !keyCombinationIsValid(event);
+	};
+
+
+
+	var caretIsBeforeMinusSign = function($input) {
+		var isNegative = $input.val()[0] === '-';
+		var caretAtBeginning = $input.get(0).selectionStart === 0;
+
+		return isNegative && caretAtBeginning;
+	};
+
+	var caretIsAfterDecimalPoint = function($input) {
+		var decimalPointPosition = $input.val().indexOf('.');
+		var caretPosition = $input.get(0).selectionStart;
+
+		if (decimalPointPosition < 0) {
+			return false;
+		}
+
+		return caretPosition > decimalPointPosition;
+	};
+
+	var reachedMaxIntDigits = function($input) {
+		var integerPart = $input.val().split('.')[0];
+		var unsignedNumber = integerPart.replace('-', '');
+
+		return unsignedNumber.length >= integerMaxDigits;
+	};
+
+	var reachedMaxDecimalDigits = function($input) {
+		var decimals = $input.val().split('.')[1];
+		var precision = $input.data('precision');
+
+		if (decimals === undefined) {
+			return false;
+		}
+
+		return decimals.length >= precision;
+	};
+
+	var invalidPositionedInput = function(event) {
+		var $input = $(event.target);
+
+		// Can only be invalid if user tries to type a number
+		if (!isDigit(event.keyCode)) {
+			return false;
+		}
+
+		if (caretIsBeforeMinusSign($input)) {
+			return true;
+		}
+
+		if (caretIsAfterDecimalPoint($input)) {
+			return reachedMaxDecimalDigits($input);
+		}
+		else {
+			return reachedMaxIntDigits($input);
+		}
+
+		return false;
+	};
+
+
+
+	var invalidDecimalPointInput = function(event) {
+
+		var $input = $(event.target);
+		var allowsDecimals = $input.data('precision') > 0;
+		var hasDecimalPoint = $input.val().indexOf('.') >= 0;
+
+		var decimalPointCanBeInput = allowsDecimals && !hasDecimalPoint;
+
+		return isDecimalPoint(event.keyCode) && !decimalPointCanBeInput;
+	};
+
+	var handleInvalidInput = function() {
+		if (
+			invalidKeyCombination(event)
+			||
+			invalidPositionedInput(event)
+			||
+			invalidDecimalPointInput(event)
+		) {
+			event.preventDefault();
+		}
+	};
+
+
+
+	var toggleSign = function($input) {
+		var currentValue = $input.val();
+		if (currentValue[0] === '-') {
+			$input.val(currentValue.slice(1));
+		}
+		else {
+			$input.val('-'+currentValue);
+		}
+	};
+
+	var handleMinusSign = function(event) {
+
+		if (isMinusSign(event.keyCode)) {
+			toggleSign($(event.target));
+			event.preventDefault();
+		}
+	};
+
+
+
+	var formatNumber = function(number, precision) {
+		var bigNumber = new BigNumber(number);
+		return bigNumber.toFormat(precision);
+	};
+
+	var formatAndSetValue = function($input, value) {
+		var precision = $input.data('precision');
+
+		if (isNaN(value) || value === '') {
+			$input.val('');
+		}
+		else {
+			$input.val(formatNumber(value, precision));
+		}
+	};
+
+	var sanitizePasteValue = function(rawValue) {
+		var sanitizedValue = rawValue.replace(',', '').trim();
+
+		if (isNaN(sanitizedValue)) {
+			return false;
+		}
+
+		if (lowestNumber.gt(sanitizedValue) || highestNumber.lt(sanitizedValue)) {
+			return false;
+		}
+
+		return sanitizedValue;
+	};
+
+	$('.numeric-input').focus(function() {
+		removeCommas($(this));
+	}).keydown(function(event) {
+		handleInvalidInput(event);
+		handleMinusSign(event);
+	}).blur(function(event) {
+		formatAndSetValue($(event.target), $(this).val());
+	}).on('paste', function(event) {
+		event.preventDefault();
+
+		var rawValue = event.originalEvent.clipboardData.getData('text')
+		var sanitizedValue = sanitizePasteValue(rawValue);
+
+		if (sanitizedValue === false) {
+			return false;
+		} else {
+			$(event.target).val(sanitizedValue);
+		}
+	});
+});
+
+
+//
+//	Validation
+//
+var validateRow = function(fieldRow) {
+
+	// Fields hidden by field rules are always valid
+	if ($(fieldRow).is(":hidden")) {
+		return true;
+	}
+
+	var valid = true;
+	var settings = JSON.parse(fieldRow.find('.validation-settings').val());
+
+	$.each(settings, function(validation, param) {
+		if (validations.hasOwnProperty(validation) && !validations[validation](getRowValue(fieldRow), param)) {
+			valid = false;
+			var text = validationMessages[validation].replace('%d', param);
+			showFieldError(fieldRow, text);
+			return false; //break
+		}
+	});
+
+	if (valid) {
+		hideFieldError(fieldRow);
+	}
+	return valid;
+};
+
+var getRowValue = function(row) {
+	var type = row.find('.field-type').val();
+
+	if (type === 'text-input' || type === 'date-picker') {
+		return row.find('input[type="text"]').val();
+	}
+
+	if (type === 'text-area') {
+		return row.find('textarea').val();
+	}
+
+	if (type === 'dropdown' || type === 'state-select' || type === 'country-select' || type === 'linked') {
+		var val = row.find('select').val();
+		if ($.isArray(val)) {
+			val = '"'+val.join('","')+'"';
+			if (val.length <= 2) val = '';
+		}
+		if (val === null) val = '';
+		return val;
+	}
+
+	if (type === 'checkbox') {
+		var values = [];
+		row.find('input[type="checkbox"]:checked').each(function(i, el) {
+			values.push($(el).val());
+		});
+		var ret = values.length ? '"'+values.join('","')+'"' : '';
+		return ret;
+	}
+
+	if (type === 'radio') {
+		var val = row.find('input[type="radio"]:checked').val();
+		return val === undefined ? '' : val;
+	}
+
+	if (type === 'year') {
+		return row.find('input[type="number"]').val();
+	}
+
+	if (type === 'file-upload') {
+		var val = row.find('.upload-hash-holder').val();
+		return val === 'cleared' ? '' : val;
+	}
+
+	if (type === 'numeric') {
+		return row.find('.numeric-input').val().replace(/,/g, '');
+	}
+
+  if (type === 'summary') {
+    return row.find('.summary-display').val().replace(/,/g, '');
+  }
+
+	return '';
+};
+
+var showBackendFieldErrors = function(fieldErrors) {
+	$.each(fieldErrors, function(fieldId, fieldMessages) {
+
+		var fieldRow = $('#row' + fieldId);
+
+		if (fieldRow) {
+			translateText(fieldMessages).then(function(translations) {
+				$.each(fieldMessages, function(i, text) {
+					showFieldError(fieldRow, translations ? translations.get(text) : text);
+				});
+			})
+		}
+	});
+	scrollToFirstError();
+};
+
+var showFieldError = function(fieldRow, text) {
+	translateText(text).then(function(translation) {
+		fieldRow.find('.field-error').addClass('error-active').text(translation ? translation.get(text) : text);
+		fieldRow.find('.field-error').fadeIn(100);
+	});
+};
+
+var hideFieldError = function(fieldRow) {
+	fieldRow.find('.field-error').removeClass('error-active').fadeOut(100);
+};
+
+var validationMessages = {
+	alpha: 'Please use letters only (a-z)',
+	alphaNumeric: 'Please use only letters (a-z) or numbers (0-9). No spaces or other characters are allowed',
+	currencyDollar: 'Please enter a valid $ amount (for example: $100.00)',
+	date : 'Please enter a valid date',
+	dateUS : 'Please enter a valid date',
+	emailAddress : 'Please enter a valid email address (for example: fred@domain.com)',
+	numeric : 'Please enter a valid number',
+	required : 'This field is required',
+	unique : 'This is already taken',
+	url : 'Please enter a valid URL',
+	zipCode : 'Please enter a valid Zip Code',
+	maxlength: 'This can\'t be more than %d characters long',
+	minwordcount: 'This needs to have at least %d words',
+	maxwordcount: 'This can\'t be more than %d words long',
+	minNumber: 'This number is smaller than the allowed minimum of %d',
+	maxNumber: 'This number is larger than the allowed maximum of %d'
+};
+
+var countWords = function(string) {
+	var matches = string.match(/(\S+)/g);
+	return matches ? matches.length : 0;
+}
+
+var validations = {
+	required: function(value) {
+		return value.trim().length > 0;
+	},
+
+	maxlength: function(value, length) {
+		return value.length <= length;
+	},
+
+	minwordcount: function(value, length) {
+		if (value === '') return true;
+		return countWords(value) >= length;
+	},
+
+	maxwordcount: function(value, length) {
+		return countWords(value) <= length;
+	},
+
+	alpha: function(value) {
+		return /^[a-z]*$/i.test(value);
+	},
+
+	alphaNumeric: function(value) {
+		return /^[a-z0-9]*$/i.test(value);
+	},
+
+	currencyDollar: function(value) {
+		return /^\$?\-?([1-9]{1}[0-9]{0,2}(\,[0-9]{3})*(\.[0-9]{0,2})?|[1-9]{1}\d*(\.[0-9]{0,2})?|0(\.[0-9]{0,2})?|(\.[0-9]{1,2})?)$/.test(value);
+	},
+
+	numeric: function(value) {
+		if (value === '') return true;
+		return /^[-+]?([0-9]*\.[0-9]+|[0-9]+)$/.test(value);
+	},
+
+	zipCode: function(value) {
+		if (value === '') return true;
+		return  /^\d{5}(?:[-\s]\d{4})?$/.test(value);
+	},
+
+	emailAddress: function(value) {
+		if (value === '') return true;
+		return /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/.test(value.toLowerCase());
+	},
+
+	minNumber: function(value, min) {
+		if (value === '') return true;
+		return parseFloat(value) >= parseFloat(min);
+	},
+
+	maxNumber: function(value, max) {
+		if (value === '') return true;
+		return parseFloat(value) <= parseFloat(max);
+	}
+};
+
+var triggerValidation = function() {
+	var valid = true;
+	$('form.wg-submittable .form-group').each(function(i, el) {
+		valid = validateRow($(el)) && valid;
+	});
+
+	if (!valid) {
+		scrollToFirstError();
+	}
+	return valid;
+};
+
+var scrollToFirstError = function() {
+	var container = $('form.wg-submittable').parent();
+	var fieldErrors = $('.form-group .error-active');
+	var marginTop = 30;
+	var innerMarginTop = 90;
+
+	if (!fieldErrors.length) {
+		return;
+	}
+
+	if (container.css('overflow') === 'auto') {
+		$('html, body').animate({
+			scrollTop: container.offset().top - marginTop
+		}, 1000);
+
+		container.animate({
+			scrollTop: container.scrollTop() + fieldErrors.position().top - innerMarginTop
+		}, 1000);
+	}
+	else {
+		$('html, body').animate({
+			scrollTop: fieldErrors.offset().top - marginTop
+		}, 1000);
+	}
+};
+
+
+var formEngine = function() {
+
+	var $form = $('form.wg-submittable');
+	var autoSaveCall = false;
+
+	var formData = {
+		get: function() {
+			var newData = $form.serializeArray();
+
+			// Loop through all items and look for any that are hidden because of field rules
+			// Make sure that the data is emptied out of the hidden fields before it is sent
+			// back to Zengine and triggers a validation failure (that won't show anyway).
+			//
+			// It should only trigger on hidden fields that don't have a class of field-empty-value
+			// because those are intentionally sent to make sure dropdowns, checkboxes, etc still
+			// work if not selected with an explicit value.
+			newData.forEach(function(field, idx) {
+				if (field && field.name && field.name.indexOf('[form]') !== -1) {
+					var selector = $form.find('*[name="' + field.name + '"]');
+					selector.each(function() {
+						var selectedElement = $(this);
+						if (selectedElement && selectedElement.is(':hidden') && !selectedElement.hasClass('field-empty-value') && !selectedElement.hasClass('upload-hash-holder')) {
+							newData[idx] = {name: field.name, value: ''};
+						}
+					});
+				}
+			});
+
+			return newData;
+		},
+		checkpoint: function() {
+			this.savedData = this.get();
+		},
+		isDirty: function() {
+			return JSON.stringify(this.get()) !== JSON.stringify(this.savedData);
+		},
+		isValid: function() {
+			return triggerValidation();
+		}
+	};
+
+	var fadeInAndOut = function(selector) {
+		$form.find(selector).fadeIn(function() {
+			setTimeout(function() {
+				$(selector).fadeOut(1000);
+			}, 4000);
+		});
+	};
+	var startLoading = function() {
+		$form.find('.saving-indicator').show();
+		$form.find('.saved-indicator').hide();
+		$form.find('.error-indicator').hide();
+	};
+	var stopLoading = function(success) {
+		$form.find('.saving-indicator').hide();
+		if (success) {
+			fadeInAndOut('.saved-indicator');
+		} else {
+			fadeInAndOut('.error-indicator');
+		}
+	};
+
+	var getDefaultUrl = function() {
+		return $form.attr('action')+'.json';
+	};
+
+	var updateLastSaveIndicator = function() {
+		$form.find('.last-save-indicator .save-time-container').html(new Date().toLocaleTimeString());
+		$form.find('.last-save-indicator').fadeIn();
+	};
+
+	var hideLastSaveIndicator = function() {
+		$form.find('.last-save-indicator').fadeOut();
+	};
+
+	var save = function(options) {
+
+		if (!options.draft) {
+			var valid = triggerValidation();
+			if (!valid) {
+				if (options.complete) {
+					options.complete();
+				}
+				return false;
+			}
+		}
+
+		startLoading();
+		disableSubmit();
+
+		formData.checkpoint();
+
+		var data = formData.get();
+		data.push({
+			name: 'data[submit]',
+			value: options.draft ? 0 : 1
+		});
+		hideLastSaveIndicator();
+		wg.ajax({
+			url: options.url || getDefaultUrl(),
+			type: 'post',
+			dataType: 'JSON',
+			data: data,
+			success: function(data) {
+				if (!data.success) {
+					if (data.validation) {
+						return showBackendFieldErrors(data.validation);
+					}
+					if (options.error) {
+						return options.error(data);
+					}
+					return;
+				}
+				updateUploadFields();
+				updateLastSaveIndicator();
+				if (options.success) {
+					return options.success(data);
+				}
+			},
+			error: options.error,
+			complete: function(jqXHR) {
+				var data = $.parseJSON(jqXHR.responseText);
+				if (data.redirectUrl) {
+					window.location.href = data.redirectUrl;
+					return;
+				}
+				stopLoading(data.success);
+				enableSubmit();
+				if (options.complete) {
+					options.complete();
+				}
+			}
+		});
+
+		return false;
+	};
+
+	var checkpoint = function() {
+		return formData.checkpoint();
+	};
+
+	var isDirty = function() {
+		return formData.isDirty();
+	};
+
+	var isValid = function() {
+		return formData.isValid();
+	};
+
+	var setAutoSave = function(url) {
+		var saver = function() {
+			if (!isDirty()) {
+				return;
+			}
+
+			var params = {
+				draft: true,
+				url: url || getDefaultUrl()
+			};
+			save(params);
+		};
+
+		var inactivePing = function(wgObj) {
+			if (isDirty()) {
+				return wgObj.callPing();
+			}
+		}
+
+		if (autoSaveCall) {
+			// Make sure we don't get duplicate events
+			wg.unregisterInactiveEvent(inactivePing);
+
+			clearInterval(autoSaveCall);
+		}
+
+		wg.registerInactiveEvent(inactivePing);
+
+		autoSaveCall = setInterval(saver, 5 * 60 * 1000); // 5 minutes
+	};
+
+	$(function() {
+		formData.checkpoint();
+	});
+
+	return {
+		save: save,
+		isDirty: isDirty,
+		checkpoint:checkpoint,
+		isValid: isValid,
+		setAutoSave: setAutoSave
+	};
+}();

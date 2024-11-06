@@ -1,0 +1,276 @@
+$(function() {
+	/**
+	* Javascript Object to hold the MicroAPI
+	*/
+	MicroAPI ={
+		formId : null,
+		mappings : null,
+		origin : null
+	};
+
+	MicroAPI.Init = function(data) {
+		if (data.formId) {
+			MicroAPI.formId = parseInt(data.formId);
+		}
+		if (data.mappings) {
+			MicroAPI.mappings = data.mappings;
+		}
+		if (data.origin) {
+			MicroAPI.origin = data.origin;
+		}
+	}
+
+	/**
+	* PingParent
+	* Allow to test the communication with the Parent Window through postMessage API
+	* allways return true
+	*/
+	MicroAPI.PingParent = function() {
+
+		return true;
+
+	}
+
+	postRobot.on('PingParent',{ domain: MicroAPI.origin }, function(event) {
+
+		return MicroAPI.PingParent();
+
+	});
+
+	/**
+	* GetForm
+	* On a view context return the form values to be exported
+	* return the form object
+	*/
+	MicroAPI.GetForm = function(options) {
+		var ret = {};
+		if (options.useMappings === true) {
+			for (var i in MicroAPI.mappings) {
+
+				var attribute = MicroAPI.mappings[i].attribute;
+				var fieldId = MicroAPI.mappings[i].fieldId;
+				if ($("#row"+fieldId).length > 0){
+					ret[attribute] = getFieldValue($("#row"+fieldId)[0]);
+				}
+			}
+
+		} else {
+
+			$.each($('.form-group'), function (key,value) {
+
+				var fieldType = $(value).find('input[class="field-type"]');
+
+				if (
+					fieldType
+					&& fieldType.val() !== 'linked'
+					&& fieldType.val() !== 'heading'
+					&& fieldType.val() !== 'text') {
+
+					var fieldId = value.id.replace("row","");
+
+					if ($("#row"+fieldId).length > 0){
+						ret["field"+fieldId] =  getFieldValue($("#row"+fieldId)[0]);
+					}
+
+
+				}
+
+			});
+
+		}
+
+		return ret;
+	}
+	postRobot.on('GetForm',{ domain: MicroAPI.origin }, function(event) {
+
+	    if (event.origin !== MicroAPI.origin) {
+	    	return false;
+	  	}
+
+	  	if (!event.data.options) {
+	  		event.data.options = {useMappings:true}
+	  	}
+
+	  	return MicroAPI.GetForm(event.data.options);
+	});
+
+	/**
+	* GetAttributeMappings
+	* send to the client window all the available attributes names
+	* return and object
+	*/
+	MicroAPI.GetAttributeMappings = function(searchKey) {
+		var ret = [];
+		for (var key in MicroAPI.mappings) {
+			
+			if (searchKey === MicroAPI.mappings[key].attribute) {
+				return MicroAPI.mappings[key].fieldId;
+			}
+
+		    ret.push(MicroAPI.mappings[key].attribute);
+
+		}
+
+		return ret;
+	}
+	postRobot.on('GetAttributeMappings',{ domain: MicroAPI.origin }, function(event) {
+
+	  	return MicroAPI.GetAttributeMappings();
+
+	});
+
+	/**
+	* PutForm
+	* On an edit context retrieve field values from the client window
+	* return true if success, false otherwise
+	*/
+	MicroAPI.PutForm = function(form,options) {
+			for (var key in form) {
+				if (options.useMappings){
+					fieldId=MicroAPI.GetAttributeMappings(key);
+				} else {
+					fieldId = key.replace('field','');
+				}
+			    if (!setFieldValue(fieldId,form[key])) {
+
+			    	throwError("the returned form data is not compatible with MicroAPI for portals. Contact your program administrator");
+
+			    }
+		}
+
+		return true;
+	}
+
+	postRobot.on('PutForm',{ domain: MicroAPI.origin }, function(event) {
+
+		if (!event.data.options) {
+			event.data.options = {useMappings : true};
+		}
+
+	  	if (event.data.form) {
+
+	  		return MicroAPI.PutForm(event.data.form,event.data.options);
+
+	  	} else {
+
+	  		throw "missing form parameter";
+
+	   	}
+
+	});
+
+	/**
+	* RaiseError
+	* Allow to send error messages to the parent window. Currently those are shown in a modal. waiting for mockups
+	* always return true
+	*/
+	MicroAPI.RaiseError = function(message) {
+
+		wg.warningAlert(message);
+
+		return true;
+
+	}
+
+	postRobot.on('RaiseError',{ domain: MicroAPI.origin }, function(event) {
+
+	  	if (event.data.message) {
+
+	  		return MicroAPI.RaiseError(event.data.message);
+
+	  	} else {
+
+	  		throw "missing message parameter";
+
+	   	}
+
+	});
+
+
+	/**
+	* Close
+	* Close a client window from the parent
+	*/
+	MicroAPI.Close = function(childWindow) {
+
+		childWindow.close();
+
+		return;
+
+	}
+
+	postRobot.on('Close',{ domain: MicroAPI.origin }, function(event) {
+
+	  	MicroAPI.Close(event.source);
+
+	});
+
+	/**
+	* HELPER FUNCTIONS FOR PutForm Method
+	*/
+
+	function setFieldValue(fieldId,value) {
+		// Get field type
+		var row = $("#row"+fieldId);
+		if (row){
+			var fieldType = $(row).find('input[class="field-type"]');
+			if (fieldType) {
+				if (fieldType.val() === 'radio' || fieldType.val() === 'checkbox') {
+					return setFieldChoice(fieldType.val(),fieldId,value);
+				} else if ($("#input-field-"+fieldId).length > 0){
+
+		    		return $("#input-field-"+fieldId).val(value);
+
+		    	} else {
+
+			    	throwError("unsuported field type or missed field",fieldType.val()+"-"+fieldId);
+
+			    }
+			} else {
+				throwError("unable to detect field type",fieldId);				
+			}
+		} else {
+			return false;
+		}
+	}
+
+	function setFieldChoice (type,fieldId, value) {
+		if (type === 'radio') {
+			var option = $("input[name='data[form]["+fieldId+"]'][type='radio'][value='"+value+"']")
+
+    		if (option.length > 0) {
+    			option.click();
+    		} else {
+    			throwError('Missed option setting field choice(s)',fieldId+"_"+value);
+    		}
+
+    	} else if (type === 'checkbox') {
+    		//clean all checkboxes
+    		$("input[name='data[form]["+fieldId+"][]'][type='checkbox']").removeAttr('checked');
+
+    		if (value) {
+	    		$.each ( value,function (key,value) {
+	    			var option = $("input[name='data[form]["+fieldId+"][]'][type='checkbox'][value='"+value+"']"); 
+		    		if (option.length > 0) {
+		    			option.click();
+		    		} else {
+		    			throwError('Missed option setting field choice(s)',fieldId+"_"+value);
+		    		}
+
+	    		});
+    	 	}
+    	} else {
+    		throwError('unsuported field type',type);
+    	}
+    	return true;
+	}
+
+	function throwError(message, details)
+	{
+		if (details) {
+			message+=".("+details+")";
+		}
+		throw message;
+	}
+
+});

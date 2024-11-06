@@ -1,0 +1,24 @@
+$(function() {
+	var checkDisabled = function(form) {
+		var chkCount = $(form).find('.accept-box input:checkbox:checked').length;
+		var totalCount = $(form).find('.accept-box input:checkbox').length;
+		$(form).find('.checked-submit-button').attr('disabled', chkCount < totalCount);
+	};
+
+	$('.checked-submit-button').closest('form').each(function(idx, form) {
+		checkDisabled(form);
+		$(form).on('change', '.accept-box input:checkbox', function() {
+			checkDisabled(form);
+		});
+	});
+
+	$(".toggle-password").click(function() {
+		$(this).toggleClass("fa-eye fa-eye-slash");
+		var input = $($(this).attr("toggle"));
+		if (input.attr("type") == "password") {
+			input.attr("type", "text");
+		} else {
+			input.attr("type", "password");
+		}
+	});
+});

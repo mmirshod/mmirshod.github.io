@@ -1,0 +1,36 @@
+$(function() {
+	var childImportExporWindow = null;
+	$('.wh-injected-btn').click(this, function(){
+		if (event) {
+			event.preventDefault();
+		}
+		var url = this.dataset.url;
+		var form = this.dataset.form;
+		var origin = this.dataset.origin;
+		var options = JSON.parse(this.dataset.window);
+		var mappings = JSON.parse(this.dataset.mappings);
+		MicroAPI.Init({
+			formId: form,
+			mappings: mappings,
+			origin: origin
+		});
+
+		var dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : screen.left,
+			dualScreenTop = window.screenTop !== undefined ? window.screenTop : screen.top,
+			screenWidth = window.innerWidth ? window.innerWidth : $(document).width ? $(document).width() : screen.width,
+			screenHeight = window.innerHeight ? window.innerHeight : $(document).height ? $(document).height() : screen.height,
+			width = options.width,
+			height = options.height,
+			left = (screenWidth/2) - (width/2) + dualScreenLeft,
+			top = (screenHeight/2) - (height/2) + dualScreenTop;
+
+		var popupOptions = 'height=' + height + ',width=' + width + ',top=' + top + ',left=' + left + 'toolbar=no,location=no,scrollbars=yes,resizable=no';
+
+		childImportExportWindow = window.open(url, "_blank", popupOptions);
+		if (!childImportExportWindow || childImportExportWindow.closed || typeof childImportExportWindow.closed=='undefined') {
+			// Popup blocked - message user and close.
+			wg.warningAlert("It appears your browser is set to block pop-up windows. Please adjust your browser settings before continuing.");
+		}
+
+	});
+});
