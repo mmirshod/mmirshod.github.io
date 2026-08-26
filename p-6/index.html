@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#07111f" />
+<title>Six Unknown Constants</title>
+<style>
+  :root {
+    --bg: #06101c;
+    --bg2: #0a1728;
+    --panel: rgba(13, 29, 49, .72);
+    --panel-strong: rgba(18, 39, 64, .93);
+    --line: rgba(198, 225, 255, .15);
+    --text: #edf7ff;
+    --muted: #9db0c4;
+    --accent: #7ad7ff;
+    --accent2: #a9f0de;
+    --warm: #ffd6a5;
+    --success: #8df0c7;
+    --danger: #ff9a9a;
+    --shadow: 0 24px 80px rgba(0,0,0,.28);
+    --radius: 22px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 15% 10%, rgba(83,166,255,.13), transparent 28rem),
+      radial-gradient(circle at 85% 70%, rgba(128,255,210,.08), transparent 30rem),
+      linear-gradient(180deg, var(--bg), #071423 45%, #091524 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content:"";
+    position: fixed; inset: 0; pointer-events:none; opacity:.25;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 38px 38px;
+    mask-image: linear-gradient(to bottom, black, transparent 90%);
+  }
+
+  a { color: inherit; }
+  button, input { font: inherit; }
+  button { cursor:pointer; }
+
+  .shell { width:min(1120px, calc(100% - 28px)); margin:0 auto; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    backdrop-filter: blur(18px);
+    background: rgba(5, 14, 25, .72);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    min-height: 72px; display:flex; align-items:center; gap:18px; justify-content:space-between;
+  }
+  .brand { display:flex; align-items:center; gap:12px; min-width:0; }
+  .brand-mark {
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid rgba(122,215,255,.45);
+    display:grid; place-items:center; position:relative;
+    box-shadow: inset 0 0 22px rgba(122,215,255,.08);
+  }
+  .brand-mark::before,.brand-mark::after{content:"";position:absolute;border:1px solid rgba(122,215,255,.35);border-radius:50%;}
+  .brand-mark::before{width:28px;height:10px;transform:rotate(25deg)}
+  .brand-mark::after{width:10px;height:28px;transform:rotate(25deg)}
+  .brand-title { font-weight:700; letter-spacing:.08em; font-size:.8rem; white-space:nowrap; }
+  .brand-sub { font-size:.72rem; color:var(--muted); margin-top:2px; }
+
+  .constants { display:flex; gap:7px; align-items:center; flex-wrap:nowrap; }
+  .constant-dot {
+    width:38px; height:38px; border-radius:12px; border:1px solid var(--line);
+    display:grid; place-items:center; color:#6e859b; background:rgba(255,255,255,.02);
+    font-size:.76rem; font-weight:700; transition:.35s ease;
+  }
+  .constant-dot.solved {
+    color:#071622; background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border-color:transparent; transform:translateY(-1px); box-shadow:0 8px 30px rgba(122,215,255,.15);
+  }
+
+  main { padding-bottom: 90px; }
+  section { scroll-margin-top: 95px; }
+
+  .hero {
+    min-height: calc(100vh - 72px); display:grid; align-items:center; padding:64px 0 80px;
+  }
+  .eyebrow { color:var(--accent); letter-spacing:.16em; font-size:.76rem; font-weight:800; text-transform:uppercase; }
+  h1 { font-size:clamp(3rem,9vw,7.3rem); line-height:.9; letter-spacing:-.065em; margin:18px 0 24px; max-width:950px; }
+  .hero p { color:var(--muted); font-size:clamp(1.05rem,2vw,1.28rem); line-height:1.7; max-width:720px; }
+  .hero-actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:34px; }
+
+  .btn {
+    border:1px solid var(--line); color:var(--text); background:rgba(255,255,255,.04);
+    padding:13px 18px; border-radius:14px; font-weight:750; letter-spacing:.01em;
+    transition:.2s ease; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn:hover { transform:translateY(-1px); border-color:rgba(122,215,255,.45); }
+  .btn.primary { color:#06131d; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; }
+  .btn.ghost { background:transparent; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+
+  .protocol {
+    margin-top:52px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:820px;
+  }
+  .protocol-card { border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.025); padding:18px; }
+  .protocol-card strong { display:block; font-size:.9rem; margin-bottom:6px; }
+  .protocol-card span { color:var(--muted); font-size:.85rem; line-height:1.5; }
+
+  .stage { padding:86px 0 24px; }
+  .stage.locked { filter:grayscale(.4); opacity:.38; pointer-events:none; user-select:none; }
+  .stage-head { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:24px; }
+  .stage-kicker { color:var(--accent); font-size:.76rem; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
+  .stage h2 { font-size:clamp(2rem,5vw,3.7rem); margin:8px 0 0; letter-spacing:-.045em; }
+  .stage-num { color:#5e7184; font-weight:800; font-size:.88rem; }
+
+  .card {
+    border:1px solid var(--line); background:linear-gradient(180deg,rgba(16,34,56,.8),rgba(10,25,43,.82));
+    box-shadow:var(--shadow); border-radius:var(--radius); overflow:hidden;
+  }
+  .card-inner { padding:clamp(22px,4vw,38px); }
+  .prompt { color:#c6d4e1; font-size:1rem; line-height:1.72; max-width:800px; }
+  .prompt strong { color:var(--text); }
+  .micro { font-size:.78rem; color:#71879b; letter-spacing:.04em; }
+
+  .truth-grid { display:grid; gap:10px; margin-top:24px; }
+  .truth-row {
+    display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center;
+    border:1px solid var(--line); padding:14px 14px 14px 16px; border-radius:14px; background:rgba(255,255,255,.018);
+  }
+  .truth-row span { color:#d9e6f2; line-height:1.45; }
+  .toggle-group { display:flex; gap:5px; padding:4px; background:rgba(0,0,0,.18); border-radius:11px; }
+  .toggle-btn { border:0; color:#8094a7; background:transparent; border-radius:8px; padding:8px 10px; font-size:.75rem; font-weight:850; }
+  .toggle-btn.active { background:#173653; color:#dbf6ff; }
+  .toggle-btn.active.false { background:#4b2b35; color:#ffe3e3; }
+
+  .answer-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:24px; }
+  .answer-input {
+    width:min(250px,100%); padding:13px 14px; border-radius:13px; border:1px solid var(--line); outline:none;
+    color:var(--text); background:rgba(3,12,22,.72);
+  }
+  .answer-input:focus { border-color:rgba(122,215,255,.55); box-shadow:0 0 0 3px rgba(122,215,255,.08); }
+
+  .feedback { min-height:24px; margin-top:15px; font-weight:700; font-size:.9rem; color:var(--muted); }
+  .feedback.ok { color:var(--success); }
+  .feedback.bad { color:var(--danger); }
+  .reveal {
+    display:none; margin-top:20px; border:1px solid rgba(141,240,199,.25); background:rgba(141,240,199,.06);
+    padding:18px; border-radius:16px;
+  }
+  .reveal.show { display:flex; align-items:center; justify-content:space-between; gap:18px; animation:rise .45s ease both; }
+  .reveal .value { font-size:2rem; font-weight:900; letter-spacing:-.04em; color:var(--success); }
+  @keyframes rise { from { opacity:0; transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  .graph-wrap { margin-top:26px; display:grid; grid-template-columns:minmax(0,1.7fr) minmax(220px,.7fr); gap:18px; }
+  .graph-panel { border:1px solid var(--line); border-radius:18px; padding:12px; min-height:420px; background:rgba(0,0,0,.12); }
+  svg { width:100%; height:auto; display:block; }
+  .edge { stroke:#36536e; stroke-width:2.5; }
+  .edge.active { stroke:#85e8cd; stroke-width:4; filter:drop-shadow(0 0 5px rgba(133,232,205,.25)); }
+  .weight { fill:#92a8ba; font-size:13px; font-weight:800; }
+  .node { fill:#0e2137; stroke:#557491; stroke-width:2; cursor:pointer; transition:.2s ease; }
+  .node:hover { stroke:#8fe5ff; }
+  .node.active { fill:#173e56; stroke:#8fe5ff; stroke-width:3; }
+  .node.finish { stroke:#e9c998; }
+  .node-text { fill:#eef7ff; font-size:13px; text-anchor:middle; pointer-events:none; font-weight:800; }
+  .node-sub { fill:#87a0b6; font-size:10px; text-anchor:middle; pointer-events:none; }
+  .route-box { border:1px solid var(--line); border-radius:18px; padding:18px; background:rgba(255,255,255,.02); }
+  .route-box h3 { margin:0 0 12px; font-size:1rem; }
+  .route-list { color:#b8c7d4; line-height:1.7; min-height:92px; font-size:.9rem; word-break:break-word; }
+  .route-sum { font-size:2rem; font-weight:900; color:var(--accent); margin:12px 0 16px; }
+
+  .bits { display:flex; gap:10px; margin:24px 0; flex-wrap:wrap; }
+  .bit-box { min-width:64px; padding:14px; border:1px solid var(--line); border-radius:14px; text-align:center; background:rgba(255,255,255,.025); }
+  .bit-box small { display:block; color:var(--muted); font-size:.7rem; margin-bottom:4px; }
+  .bit-box strong { font-family: ui-monospace,SFMono-Regular,Menlo,monospace; }
+
+  .code-panel {
+    margin-top:24px; border:1px solid var(--line); border-radius:16px; background:#04101c; padding:18px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#bfeaff; overflow:auto;
+  }
+  .code-dim { color:#5b768f; }
+  .code-highlight { color:#ffe1a8; font-weight:900; }
+
+  .circuit { margin:26px 0 10px; border:1px solid var(--line); border-radius:18px; padding:22px; background:rgba(0,0,0,.12); }
+  .circuit-line { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:0; min-height:100px; }
+  .wire { width:52px; height:2px; background:#68819a; }
+  .resistor { border:2px solid #7bcce8; padding:18px 20px; border-radius:8px; min-width:84px; text-align:center; font-weight:900; background:#0e263d; }
+
+  .timeline { margin-top:26px; display:grid; grid-template-columns:1fr 60px 1fr; align-items:center; gap:10px; }
+  .time-card { border:1px solid var(--line); border-radius:18px; padding:20px; background:rgba(255,255,255,.025); }
+  .time-card .date { font-size:1.6rem; font-weight:900; letter-spacing:-.035em; }
+  .time-card .place { color:var(--accent); font-size:.83rem; font-weight:800; margin-top:8px; }
+  .time-card p { color:var(--muted); margin:6px 0 0; line-height:1.5; }
+  .arrow { text-align:center; color:#6c879d; font-size:1.8rem; }
+
+  .decoder { padding-top:110px; }
+  .decoder-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin:24px 0 30px; }
+  .num-card {
+    border:1px solid var(--line); border-radius:13px; padding:12px; text-align:left; background:rgba(255,255,255,.025);
+    min-height:156px; position:relative;
+  }
+  .tile-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .tile-num { font-size:1.45rem; font-weight:900; letter-spacing:-.04em; }
+  .tile-mass { font-size:1rem; font-weight:800; opacity:.92; }
+  .tile-body { min-height:72px; display:flex; align-items:center; justify-content:center; }
+  .tile-body::after {
+    content:""; width:54px; height:54px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.18), rgba(255,255,255,.03) 60%, transparent 70%);
+    opacity:.32;
+  }
+  .tile-ghost { display:none; }
+  .tile-name { font-size:1.02rem; font-weight:800; line-height:1.1; }
+  .tile-status { margin-top:4px; color:var(--accent); font-weight:900; font-size:.76rem; min-height:1.2em; letter-spacing:.08em; text-transform:uppercase; }
+
+  .hint-box { margin-top:18px; }
+  details { border-top:1px solid var(--line); padding:14px 0; color:#b8cad8; }
+  summary { cursor:pointer; color:#d9e9f5; font-weight:800; }
+  details p { color:var(--muted); line-height:1.6; }
+
+  .reference { display:none; margin-top:18px; border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+  .reference.show { display:grid; grid-template-columns:repeat(4,1fr); }
+  .ref-cell { padding:14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:rgba(255,255,255,.02); }
+  .ref-cell strong { display:block; font-size:1.2rem; }
+  .ref-cell small { color:var(--muted); }
+
+  .finale { display:none; min-height:100vh; align-items:center; justify-content:center; padding:90px 0; position:relative; overflow:hidden; }
+  .finale.show { display:flex; }
+  .finale::before {
+    content:""; position:absolute; inset:-20%; pointer-events:none;
+    background:radial-gradient(circle at 50% 40%, rgba(255,214,165,.18), transparent 30rem),
+               radial-gradient(circle at 70% 70%, rgba(122,215,255,.13), transparent 30rem);
+  }
+  .final-card { position:relative; text-align:center; width:min(880px,100%); }
+  .element-word { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin-bottom:22px; }
+  .element-tile { width:94px; min-height:110px; border:1px solid rgba(255,255,255,.24); border-radius:18px; padding:10px; background:rgba(255,255,255,.055); text-align:left; backdrop-filter:blur(8px); }
+  .element-tile .z { color:#95a9bc; font-size:.72rem; }
+  .element-tile .symbol { font-size:2.3rem; font-weight:950; letter-spacing:-.06em; margin-top:4px; }
+  .element-tile .name { color:#b3c2cf; font-size:.68rem; margin-top:4px; }
+  .princess { font-size:clamp(3.5rem,11vw,9rem); line-height:.85; letter-spacing:-.07em; margin:20px 0; background:linear-gradient(135deg,#ffffff,#ffe1b8 45%,#a7ecff); -webkit-background-clip:text; color:transparent; }
+  .final-copy { color:#c4d0db; font-size:clamp(1rem,2vw,1.22rem); line-height:1.75; max-width:650px; margin:0 auto; }
+
+  .destination {
+    margin:42px auto 0; max-width:720px; text-align:left; border:1px solid rgba(255,214,165,.32); border-radius:22px;
+    padding:24px; background:linear-gradient(135deg,rgba(255,214,165,.08),rgba(122,215,255,.055));
+  }
+  .destination .label { color:var(--warm); font-size:.73rem; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+  .destination h3 { font-size:clamp(1.7rem,4vw,2.6rem); margin:8px 0 10px; letter-spacing:-.04em; }
+  .destination p { color:#c5d1dc; line-height:1.7; margin:0; }
+  .destination .coords { color:#728ca1; margin-top:14px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.78rem; }
+
+
+  .soft-divider { height:1px; background:var(--line); margin:28px 0; }
+  .date-entry { width:100%; margin-top:14px; }
+  .interval-step { animation:rise .4s ease both; }
+
+  .decoder-grid.sequential .num-card { transition:.35s ease; position:relative; overflow:hidden; }
+  .num-card.waiting { opacity:.36; filter:grayscale(.35) saturate(.8); }
+  .num-card.active { border-color:rgba(122,215,255,.65); box-shadow:0 0 0 3px rgba(122,215,255,.08), 0 18px 48px rgba(0,0,0,.18); transform:translateY(-2px); }
+  .num-card.found .tile-top, .num-card.found .tile-name { filter:blur(7px); opacity:.14; user-select:none; }
+  .num-card.found .tile-ghost { opacity:0; }
+  .num-card.found .tile-status { color:var(--success); }
+  .num-card.found::after { content:'✓'; position:absolute; inset:0; display:grid; place-items:center; font-size:2.2rem; color:var(--success); pointer-events:none; text-shadow:0 0 24px rgba(169,240,222,.25); }
+  .decode-entry { margin-top:4px; border:1px solid var(--line); border-radius:18px; padding:20px; background:rgba(0,0,0,.12); }
+  .decode-current { font-size:clamp(2.4rem,6vw,4rem); font-weight:950; letter-spacing:-.06em; margin-top:2px; }
+  .num-card.lanthanide-found { border-color:#bfd8ef; background:#d8e6f3; color:#12385f; }
+  .num-card.halogen-found { border-color:#d6e3f6; background:#d7e3f5; color:#1f63d0; }
+  .num-card.nonmetal-found { border-color:#d6e2f4; background:#d9e5f5; color:#1d64d6; }
+  .num-card.lanthanide-found .tile-status { color:#214d79; }
+  .num-card.halogen-found .tile-status { color:#1f63d0; }
+  .num-card.nonmetal-found .tile-status { color:#1d64d6; }
+  .num-card.lanthanide-found .tile-body::after,
+  .num-card.halogen-found .tile-body::after,
+  .num-card.nonmetal-found .tile-body::after { background:radial-gradient(circle, rgba(17,58,92,.10), rgba(17,58,92,.02) 60%, transparent 72%); }
+
+  .element-tile.lanthanide { border-color:rgba(199,156,255,.75); background:linear-gradient(145deg,rgba(199,156,255,.26),rgba(199,156,255,.08)); }
+  .element-tile.halogen { border-color:rgba(241,214,93,.78); background:linear-gradient(145deg,rgba(241,214,93,.28),rgba(241,214,93,.08)); }
+  .element-tile.nonmetal { border-color:rgba(113,215,231,.78); background:linear-gradient(145deg,rgba(113,215,231,.25),rgba(113,215,231,.07)); }
+
+  .footer-actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:30px; }
+  .hidden { display:none !important; }
+
+  .particle { position:fixed; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:100; animation:burst 1.4s ease-out forwards; }
+  @keyframes burst { to { transform:translate(var(--x),var(--y)) rotate(520deg); opacity:0; } }
+
+  @media (max-width: 760px) {
+    .topbar-inner { min-height:64px; }
+    .brand-sub { display:none; }
+    .constant-dot { width:31px; height:31px; border-radius:9px; font-size:.65rem; }
+    .constants { gap:5px; }
+    .hero { min-height:auto; padding:72px 0 60px; }
+    .protocol { grid-template-columns:1fr; }
+    .stage { padding-top:66px; }
+    .graph-wrap { grid-template-columns:1fr; }
+    .timeline { grid-template-columns:1fr; }
+    .arrow { transform:rotate(90deg); }
+    .decoder-grid { grid-template-columns:repeat(3,1fr); }
+    .reference.show { grid-template-columns:repeat(3,1fr); }
+    .num-card { min-height:144px; }
+    .tile-num { font-size:1.2rem; }
+    .tile-mass { font-size:.92rem; }
+    .tile-body { min-height:64px; }
+    .tile-name { font-size:.92rem; }
+    .element-tile { width:78px; min-height:96px; }
+    .element-tile .symbol { font-size:1.8rem; }
+  }
+
+  @media (max-width: 480px) {
+    .shell { width:min(100% - 18px, 1120px); }
+    .brand-title { font-size:.68rem; }
+    .brand-mark { width:32px; height:32px; }
+    .truth-row { grid-template-columns:1fr; }
+    .toggle-group { width:max-content; }
+    .stage-head { align-items:flex-start; flex-direction:column; gap:8px; }
+    .wire { width:22px; }
+    .resistor { min-width:70px; padding:15px 12px; }
+    .reference.show { grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="shell topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>
+        <div class="brand-title">UNKNOWN CONSTANTS // P-6</div>
+        <div class="brand-sub">six little mysteries · one final message</div>
+      </div>
+    </div>
+    <div class="constants" id="constantsBar" aria-label="Recovered constants">
+      <div class="constant-dot" data-dot="1">?</div>
+      <div class="constant-dot" data-dot="2">?</div>
+      <div class="constant-dot" data-dot="3">?</div>
+      <div class="constant-dot" data-dot="4">?</div>
+      <div class="constant-dot" data-dot="5">?</div>
+      <div class="constant-dot" data-dot="6">?</div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="hero" id="intro">
+    <div class="shell">
+      <div class="eyebrow">A little puzzle for you</div>
+      <h1>Six values are missing.</h1>
+      <p>
+        I hid six numbers in six different places. Find them one by one, keep them in order, and see what they were trying to tell you all along.
+      </p>
+      <div class="hero-actions">
+        <button class="btn primary" onclick="document.querySelector('#p1').scrollIntoView()">Start with the first one →</button>
+        <button class="btn ghost" id="resumeBtn" onclick="resumeProgress()">Continue where I left off</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="stage" id="p1" data-stage="1">
+    <div class="shell">
+      <div class="stage-head"><div><div class="stage-kicker">Puzzle 01 · logic</div><h2>Truth is binary.</h2></div><div class="stage-num">CONST_01</div></div>
+      <div class="card"><div class="card-inner">
+        <p class="prompt">Mark each statement <strong>true</strong> or <strong>false</strong>. Read the answers from top to bottom as a binary number, where True = 1 and False = 0.</p>
+        <div class="truth-grid" id="truthGrid">
+          <div class="truth-row" data-i="0"><span>Light travels faster than sound in air.</span><div class="toggle-group"><button class="toggle-btn" data-v="1">TRUE</button><button class="toggle-btn" data-v="0">FALSE</button></div></div>
+          <div class="truth-row" data-i="1"><span>Python list indexing begins at 0.</span><div class="toggle-group"><button class="toggle-btn" data-v="1">TRUE</button><button class="toggle-btn" data-v="0">FALSE</button></div></div>
+          <div class="truth-row" data-i="2"><span>An electron has a negative electric charge.</span><div class="toggle-group"><button class="toggle-btn" data-v="1">TRUE</button><button class="toggle-btn" data-v="0">FALSE</button></div></div>
+          <div class="truth-row" data-i="3"><span>DNA is a protein.</span><div class="toggle-group"><button class="toggle-btn" data-v="1">TRUE</button><button class="toggle-btn" data-v="0">FALSE</button></div></div>
+          <div class="truth-row" data-i="4"><span>A byte normally contains 8 bits.</span><div class="toggle-group"><button class="toggle-btn" data-v="1">TRUE</button><button class="toggle-btn" data-v="0">FALSE</button></div></div>
+          <div class="truth-row" data-i="5"><span>The SI unit of electrical resistance is the ohm.</span><div class="toggle-group"><button class="toggle-btn" data-v="1">TRUE</button><button class="toggle-btn" data-v="0">FALSE</button></div></div>
+        </div>
+        <div class="answer-row"><button class="btn primary" onclick="checkTruth()">Compile bits</button></div>
+        <div class="feedback" id="f1"></div>
+        <div class="reveal" id="r1"><div><div class="micro">BINARY OUTPUT</div><strong>111011₂ = 59₁₀</strong></div><div class="value">59</div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="stage locked" id="p2" data-stage="2">
+    <div class="shell">
+      <div class="stage-head"><div><div class="stage-kicker">Puzzle 02 · algorithms</div><h2>Choose the shortest path.</h2></div><div class="stage-num">CONST_02</div></div>
+      <div class="card"><div class="card-inner">
+        <p class="prompt">A deliberately fictional network connects a few familiar names. Starting at <strong>IUT</strong>, reach <strong>Incheon</strong> with the smallest possible total cost. Click adjacent nodes to build your route.</p>
+        <div class="graph-wrap">
+          <div class="graph-panel">
+            <svg viewBox="0 0 720 430" role="img" aria-label="Weighted graph of places">
+              <g id="edgeLayer">
+                <line class="edge" data-e="IUT-Huawei" x1="95" y1="210" x2="285" y2="92"/><text class="weight" x="184" y="139">18</text>
+                <line class="edge" data-e="Huawei-UzumDay" x1="285" y1="92" x2="470" y2="155"/><text class="weight" x="375" y="111">14</text>
+                <line class="edge" data-e="UzumDay-Incheon" x1="470" y1="155" x2="625" y2="210"/><text class="weight" x="546" y="169">21</text>
+                <line class="edge" data-e="IUT-Socials" x1="95" y1="210" x2="285" y2="327"/><text class="weight" x="184" y="289">24</text>
+                <line class="edge" data-e="Socials-Ecopark" x1="285" y1="327" x2="470" y2="305"/><text class="weight" x="378" y="330">12</text>
+                <line class="edge" data-e="Ecopark-Incheon" x1="470" y1="305" x2="625" y2="210"/><text class="weight" x="548" y="282">30</text>
+                <line class="edge" data-e="IUT-UzumDay" x1="95" y1="210" x2="470" y2="155"/><text class="weight" x="280" y="169">40</text>
+                <line class="edge" data-e="Huawei-Socials" x1="285" y1="92" x2="285" y2="327"/><text class="weight" x="299" y="215">22</text>
+                <line class="edge" data-e="UzumDay-Ecopark" x1="470" y1="155" x2="470" y2="305"/><text class="weight" x="482" y="234">19</text>
+              </g>
+              <g onclick="selectNode('IUT')"><circle class="node active" data-node="IUT" cx="95" cy="210" r="42"/><text class="node-text" x="95" y="207">IUT</text><text class="node-sub" x="95" y="224">START</text></g>
+              <g onclick="selectNode('Huawei')"><circle class="node" data-node="Huawei" cx="285" cy="92" r="48"/><text class="node-text" x="285" y="89">Huawei</text><text class="node-sub" x="285" y="106">UZ</text></g>
+              <g onclick="selectNode('UzumDay')"><circle class="node" data-node="UzumDay" cx="470" cy="155" r="50"/><text class="node-text" x="470" y="152">Uzum Day</text><text class="node-sub" x="470" y="169">EVENT</text></g>
+              <g onclick="selectNode('Socials')"><circle class="node" data-node="Socials" cx="285" cy="327" r="48"/><text class="node-text" x="285" y="324">Socials</text><text class="node-sub" x="285" y="341">FIRST DATE</text></g>
+              <g onclick="selectNode('Ecopark')"><circle class="node" data-node="Ecopark" cx="470" cy="305" r="48"/><text class="node-text" x="470" y="302">Ecopark</text><text class="node-sub" x="470" y="319">MEMORY</text></g>
+              <g onclick="selectNode('Incheon')"><circle class="node finish" data-node="Incheon" cx="625" cy="210" r="50"/><text class="node-text" x="625" y="207">Incheon</text><text class="node-sub" x="625" y="224">TARGET</text></g>
+            </svg>
+          </div>
+          <div class="route-box">
+            <h3>Current route</h3>
+            <div class="route-list" id="routeList">IUT</div>
+            <div class="micro">TOTAL COST</div>
+            <div class="route-sum" id="routeSum">0</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap"><button class="btn" onclick="resetRoute()">Reset route</button><button class="btn primary" onclick="checkRoute()">Submit path</button></div>
+            <div class="feedback" id="f2"></div>
+          </div>
+        </div>
+        <details><summary>Hint</summary><p>Think like Dijkstra: the attractive-looking route is not necessarily the cheapest. Compare cumulative costs, not just individual edges.</p></details>
+        <div class="reveal" id="r2"><div><div class="micro">SHORTEST-PATH COST</div><strong>IUT → Huawei → Uzum Day → Incheon</strong></div><div class="value">53</div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="stage locked" id="p3" data-stage="3">
+    <div class="shell">
+      <div class="stage-head"><div><div class="stage-kicker">Puzzle 03 · computing</div><h2>Two birthdays. Keep both.</h2></div><div class="stage-num">CONST_03</div></div>
+      <div class="card"><div class="card-inner">
+        <p class="prompt">There are two relevant day numbers: <strong>11</strong> (official birthday) and <strong>12</strong> (actual birthday). A normal person might choose one. But a CS person can combine them both <strong>exclusively</strong>.</p>
+        <div class="bits"><div class="bit-box"><small>11₁₀</small><strong>1011₂</strong></div><div class="bit-box"><small>COMBINE</small><strong>exclusively</strong></div><div class="bit-box"><small>12₁₀</small><strong>1100₂</strong></div></div>
+        <p class="prompt">Turn those two binary forms into one new result, then write the decimal number you get.</p>
+        <div class="answer-row"><input class="answer-input" id="a3" inputmode="numeric" placeholder="decimal result"/><button class="btn primary" onclick="checkSimple(3,7)">Submit</button></div>
+        <div class="feedback" id="f3"></div>
+        <details><summary>Hint 1</summary><p>Think of the binary operation usually written like an OR, but made exclusive.</p></details>
+        <details><summary>Hint 2</summary><p>Write 11 and 12 in binary, then apply exclusive OR position by position.</p></details>
+        <details><summary>Hint 3</summary><p>1011 exclusive-OR 1100 becomes 0111.</p></details>
+        <div class="reveal" id="r3"><div><div class="micro">COMBINED OUTPUT</div><strong>0111₂</strong></div><div class="value">7</div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="stage locked" id="p4" data-stage="4">
+    <div class="shell">
+      <div class="stage-head"><div><div class="stage-kicker">Puzzle 04 · cipher</div><h2>Institutional checksum.</h2></div><div class="stage-num">CONST_04</div></div>
+      <div class="card"><div class="card-inner">
+        <p class="prompt">A tiny terminal recovered a ciphertext built from one familiar university abbreviation and the first letter of another familiar name. Decode it, then calculate the checksum.</p>
+        <div class="code-panel"><span class="code-dim">$ decode --cipher </span><span class="code-highlight">09 · 21 · 20 / 08</span><br><span class="code-dim">mode .................. </span>alphabetic positions<br><span class="code-dim">decoded ............... </span><span class="code-highlight">? ? ? / ?</span><br><span class="code-dim">checksum .............. </span>Σ positions = <span class="code-highlight">?</span></div>
+        <div class="answer-row"><input class="answer-input" id="a4" inputmode="numeric" placeholder="checksum"/><button class="btn primary" onclick="checkSimple(4,58)">Submit</button></div>
+        <div class="feedback" id="f4"></div>
+        <details><summary>Hint 1</summary><p>Start counting the alphabet from 1. What letters are 9, 21, 20, and 8?</p></details>
+        <details><summary>Hint 2</summary><p>The decoded token is IUT / H. Now the terminal wants 9 + 21 + 20 + 8.</p></details>
+        <div class="reveal" id="r4"><div><div class="micro">CHECKSUM ACCEPTED</div><strong>9 + 21 + 20 + 8</strong></div><div class="value">58</div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="stage locked" id="p5" data-stage="5">
+    <div class="shell">
+      <div class="stage-head"><div><div class="stage-kicker">Puzzle 05 · physics</div><h2>A small circuit.</h2></div><div class="stage-num">CONST_05</div></div>
+      <div class="card"><div class="card-inner">
+        <p class="prompt">Three resistors are connected <strong>in series</strong>. Determine the equivalent resistance.</p>
+        <div class="circuit"><div class="circuit-line"><div class="wire"></div><div class="resistor">5 Ω</div><div class="wire"></div><div class="resistor">3 Ω</div><div class="wire"></div><div class="resistor">8 Ω</div><div class="wire"></div></div></div>
+        <div class="answer-row"><input class="answer-input" id="a5" inputmode="numeric" placeholder="R_eq in Ω"/><button class="btn primary" onclick="checkSimple(5,16)">Submit</button></div>
+        <div class="feedback" id="f5"></div>
+        <details><summary>Hint</summary><p>For resistors in series, equivalent resistance is simply the sum.</p></details>
+        <div class="reveal" id="r5"><div><div class="micro">EQUIVALENT RESISTANCE</div><strong>5 Ω + 3 Ω + 8 Ω</strong></div><div class="value">16</div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="stage locked" id="p6" data-stage="6">
+    <div class="shell">
+      <div class="stage-head"><div><div class="stage-kicker">Puzzle 06 · memory</div><h2>I really took my time.</h2></div><div class="stage-num">CONST_06</div></div>
+      <div class="card"><div class="card-inner">
+        <p class="prompt">First, recover the two dates. One was the night I finally said how I felt on <strong>Telegram</strong>. The other was the day in <strong>Ecopark</strong> when I asked whether we should officially start dating.</p>
+        <div class="timeline" id="dateEntryTimeline">
+          <div class="time-card"><div class="place">TELEGRAM</div><p>I finally said it.</p><input class="answer-input date-entry" id="confessionDate" placeholder="DD.MM.YYYY" inputmode="numeric"/></div>
+          <div class="arrow">→</div>
+          <div class="time-card"><div class="place">ECOPARK</div><p>I finally asked.</p><input class="answer-input date-entry" id="officialDate" placeholder="DD.MM.YYYY" inputmode="numeric"/></div>
+        </div>
+        <div class="answer-row"><button class="btn primary" id="checkDatesBtn" onclick="checkMemoryDates()">Check the dates</button></div>
+        <div class="feedback" id="f6dates"></div>
+
+        <div id="intervalStep" class="interval-step hidden">
+          <div class="soft-divider"></div>
+          <p class="prompt">Correct. So… how many days did it take me to go from <em>finally saying it</em> to <em>finally asking us to make it official</em>? Apparently decisiveness was not my strongest feature.</p>
+          <div class="answer-row"><input class="answer-input" id="a6" inputmode="numeric" placeholder="number of days"/><button class="btn primary" onclick="checkSimple(6,16)">That long?</button></div>
+          <div class="feedback" id="f6"></div>
+          <details><summary>Hint</summary><p>Count elapsed days between the two dates, not the number of calendar labels you touch.</p></details>
+        </div>
+        <div class="reveal" id="r6"><div><div class="micro">YES, APPARENTLY</div><strong>18 Mar → 03 Apr</strong></div><div class="value">16</div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="stage decoder locked" id="decoder" data-stage="7">
+    <div class="shell">
+      <div class="stage-head"><div><div class="stage-kicker">Final stage · identity</div><h2>The numbers are not just numbers.</h2></div><div class="stage-num">DECODER</div></div>
+      <div class="card"><div class="card-inner">
+        <p class="prompt">All six are here. Their order matters. They belong to a family where every member has a short symbol, and the little <strong>Z</strong> beside a value may look familiar.</p>
+        <div class="decoder-grid sequential" id="decoderGrid">
+          <div class="num-card active lanthanide-found" data-decode-card="0"><div class="tile-top"><div class="tile-num">59</div><div class="tile-mass">140.91</div></div><div class="tile-body"><div class="tile-ghost">?</div></div><div class="tile-name">Praseodymium</div><div class="tile-status" data-status="0">ENTER SYMBOL</div></div>
+          <div class="num-card waiting halogen-found" data-decode-card="1"><div class="tile-top"><div class="tile-num">53</div><div class="tile-mass">126.90</div></div><div class="tile-body"><div class="tile-ghost">?</div></div><div class="tile-name">Iodine</div><div class="tile-status" data-status="1">LOCKED</div></div>
+          <div class="num-card waiting nonmetal-found" data-decode-card="2"><div class="tile-top"><div class="tile-num">7</div><div class="tile-mass">14.01</div></div><div class="tile-body"><div class="tile-ghost">?</div></div><div class="tile-name">Nitrogen</div><div class="tile-status" data-status="2">LOCKED</div></div>
+          <div class="num-card waiting lanthanide-found" data-decode-card="3"><div class="tile-top"><div class="tile-num">58</div><div class="tile-mass">140.12</div></div><div class="tile-body"><div class="tile-ghost">?</div></div><div class="tile-name">Cerium</div><div class="tile-status" data-status="3">LOCKED</div></div>
+          <div class="num-card waiting nonmetal-found" data-decode-card="4"><div class="tile-top"><div class="tile-num">16</div><div class="tile-mass">32.06</div></div><div class="tile-body"><div class="tile-ghost">?</div></div><div class="tile-name">Sulfur</div><div class="tile-status" data-status="4">LOCKED</div></div>
+          <div class="num-card waiting nonmetal-found" data-decode-card="5"><div class="tile-top"><div class="tile-num">16</div><div class="tile-mass">32.06</div></div><div class="tile-body"><div class="tile-ghost">?</div></div><div class="tile-name">Sulfur</div><div class="tile-status" data-status="5">LOCKED</div></div>
+        </div>
+        <div class="decode-entry" id="decodeEntry">
+          <div class="micro">CURRENT VALUE</div>
+          <div class="decode-current" id="decodeCurrent">59</div>
+          <p class="prompt" style="margin-top:8px">What short symbol belongs to this value?</p>
+          <div class="answer-row"><input class="answer-input" id="symbolAnswer" maxlength="2" autocomplete="off" placeholder="symbol"/><button class="btn primary" onclick="checkNextSymbol()">Lock it in</button></div>
+          <div class="feedback" id="f7"></div>
+        </div>
+        <div class="hint-box">
+          <details><summary>Hint 1</summary><p>Look at the shape of the cards, the small Z, and the idea that every value owns a one- or two-letter symbol.</p></details>
+          <details><summary>Hint 2</summary><p>Z is commonly used for the number of protons in an atom.</p></details>
+          <details><summary>Hint 3</summary><p>If that sounds familiar, think of the large grid of element tiles you have seen in chemistry classrooms.</p></details>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="finale" id="finale">
+    <div class="shell final-card">
+      <div class="eyebrow">You found it</div>
+      <div class="element-word">
+        <div class="element-tile lanthanide"><div class="z">59</div><div class="symbol">Pr</div><div class="name">Praseodymium</div></div>
+        <div class="element-tile halogen"><div class="z">53</div><div class="symbol">I</div><div class="name">Iodine</div></div>
+        <div class="element-tile nonmetal"><div class="z">7</div><div class="symbol">N</div><div class="name">Nitrogen</div></div>
+        <div class="element-tile lanthanide"><div class="z">58</div><div class="symbol">Ce</div><div class="name">Cerium</div></div>
+        <div class="element-tile nonmetal"><div class="z">16</div><div class="symbol">S</div><div class="name">Sulfur</div></div>
+        <div class="element-tile nonmetal"><div class="z">16</div><div class="symbol">S</div><div class="name">Sulfur</div></div>
+      </div>
+      <div class="princess">PRINCESS</div>
+      <p class="final-copy"><strong>Congratulations, my Princess!</strong><br>You solved every little clue. Apparently those six values were only trying to tell you what I already knew.</p>
+
+      <div class="destination">
+        <div class="label">Next destination unlocked</div>
+        <h3>SKKU · Suwon · South Korea</h3>
+        <p>Your next chapter is waiting there. See you there, my Princess — and good luck with your master’s journey. I’ll be cheering for you all the way.</p>
+        <div class="coords">DESTINATION_STATUS = READY // MASTER'S JOURNEY</div>
+      </div>
+
+      <div class="footer-actions"><button class="btn" onclick="restartGame()">Play it again</button></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const ANSWERS = [59,53,7,58,16,16];
+const storeKey = 'p6_princess_progress_v3';
+let progress = { solved:[false,false,false,false,false,false], decoded:0, final:false };
+const ELEMENTS = [
+  {z:59,symbol:'Pr',name:'Praseodymium',mass:'140.91',kind:'lanthanide'},
+  {z:53,symbol:'I',name:'Iodine',mass:'126.90',kind:'halogen'},
+  {z:7,symbol:'N',name:'Nitrogen',mass:'14.01',kind:'nonmetal'},
+  {z:58,symbol:'Ce',name:'Cerium',mass:'140.12',kind:'lanthanide'},
+  {z:16,symbol:'S',name:'Sulfur',mass:'32.06',kind:'nonmetal'},
+  {z:16,symbol:'S',name:'Sulfur',mass:'32.06',kind:'nonmetal'}
+];
+let truth = [null,null,null,null,null,null];
+
+const graph = {
+  IUT:{Huawei:18,Socials:24,UzumDay:40},
+  Huawei:{IUT:18,UzumDay:14,Socials:22},
+  UzumDay:{Huawei:14,Incheon:21,IUT:40,Ecopark:19},
+  Socials:{IUT:24,Ecopark:12,Huawei:22},
+  Ecopark:{Socials:12,Incheon:30,UzumDay:19},
+  Incheon:{UzumDay:21,Ecopark:30}
+};
+let route = ['IUT'];
+let routeCost = 0;
+
+function save(){ localStorage.setItem(storeKey, JSON.stringify(progress)); }
+function load(){
+  try { const s = JSON.parse(localStorage.getItem(storeKey)); if(s && Array.isArray(s.solved)) progress=s; } catch(e){}
+  if(!Number.isInteger(progress.decoded)) progress.decoded=0;
+  applyProgress(false);
+  applyDecoderState();
+}
+function applyProgress(scroll=false){
+  progress.solved.forEach((ok,i)=>{
+    const dot=document.querySelector(`[data-dot="${i+1}"]`);
+    dot.textContent = ok ? ANSWERS[i] : '?'; dot.classList.toggle('solved',ok);
+    if(ok){ document.querySelector(`#r${i+1}`)?.classList.add('show'); }
+    const next=document.querySelector(`[data-stage="${i+2}"]`); if(next && (ok || i<progress.solved.findIndex(x=>!x))) next.classList.remove('locked');
+  });
+  for(let i=0;i<6;i++){
+    const section=document.querySelector(`[data-stage="${i+1}"]`);
+    const unlocked = i===0 || progress.solved[i-1];
+    section?.classList.toggle('locked',!unlocked);
+  }
+  document.querySelector('#decoder').classList.toggle('locked',!progress.solved.every(Boolean));
+  document.querySelector('#resumeBtn').classList.toggle('hidden', !progress.solved.some(Boolean) && !progress.final);
+  if(progress.final){
+    document.querySelector('#finale').classList.add('show');
+    document.querySelector('#decoder').classList.add('hidden');
+  }
+  if(scroll) resumeProgress();
+}
+function resumeProgress(){
+  if(progress.final){ document.querySelector('#finale').scrollIntoView(); return; }
+  const idx=progress.solved.findIndex(x=>!x);
+  (idx===-1 ? document.querySelector('#decoder') : document.querySelector(`[data-stage="${idx+1}"]`)).scrollIntoView();
+}
+
+function markSolved(n){
+  if(progress.solved[n-1]) return;
+  progress.solved[n-1]=true; save();
+  const dot=document.querySelector(`[data-dot="${n}"]`); dot.textContent=ANSWERS[n-1]; dot.classList.add('solved');
+  document.querySelector(`#r${n}`).classList.add('show');
+  const next=document.querySelector(`[data-stage="${n+1}"]`); if(next) next.classList.remove('locked');
+  if(n===6) document.querySelector('#decoder').classList.remove('locked');
+  setTimeout(()=>{ (n===6 ? document.querySelector('#decoder') : document.querySelector(`[data-stage="${n+1}"]`))?.scrollIntoView({behavior:'smooth',block:'start'}); },850);
+}
+
+// Puzzle 1
+for(const row of document.querySelectorAll('.truth-row')){
+  row.querySelectorAll('.toggle-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    row.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active','false'));
+    btn.classList.add('active'); if(btn.dataset.v==='0') btn.classList.add('false');
+    truth[+row.dataset.i]=+btn.dataset.v;
+  }));
+}
+function checkTruth(){
+  const f=document.querySelector('#f1');
+  if(truth.some(v=>v===null)){ f.className='feedback bad'; f.textContent='Set all six statements first.'; return; }
+  const bits=truth.join(''); const val=parseInt(bits,2);
+  if(val===59){ f.className='feedback ok'; f.textContent=`${bits}₂ converts to 59.`; markSolved(1); }
+  else { f.className='feedback bad'; f.textContent=`You produced ${bits}₂ = ${val}. Recheck the statements.`; }
+}
+
+// Puzzle 2
+function selectNode(node){
+  if(progress.solved[1]) return;
+  const current=route[route.length-1];
+  if(node===current) return;
+  if(!graph[current] || graph[current][node]===undefined){
+    const f=document.querySelector('#f2'); f.className='feedback bad'; f.textContent=`${current} is not directly connected to ${node}.`;
+    return;
+  }
+  if(route.includes(node)){ const f=document.querySelector('#f2'); f.className='feedback bad'; f.textContent='No cycles needed. Reset if you want to try another route.'; return; }
+  route.push(node); routeCost += graph[current][node]; updateRouteVisuals();
+}
+function edgeKey(a,b){ return [a,b].sort().join('-'); }
+function updateRouteVisuals(){
+  document.querySelector('#routeList').textContent=route.join(' → '); document.querySelector('#routeSum').textContent=routeCost;
+  document.querySelectorAll('.node').forEach(n=>n.classList.toggle('active',route.includes(n.dataset.node)));
+  document.querySelectorAll('.edge').forEach(e=>e.classList.remove('active'));
+  for(let i=0;i<route.length-1;i++){
+    const a=route[i], b=route[i+1];
+    document.querySelectorAll('.edge').forEach(e=>{
+      const pair=e.dataset.e.split('-'); if(edgeKey(...pair)===edgeKey(a,b)) e.classList.add('active');
+    });
+  }
+}
+function resetRoute(){ route=['IUT']; routeCost=0; updateRouteVisuals(); document.querySelector('#f2').textContent=''; }
+function checkRoute(){
+  const f=document.querySelector('#f2');
+  if(route[route.length-1]!=='Incheon'){ f.className='feedback bad'; f.textContent='Reach Incheon before submitting.'; return; }
+  if(routeCost===53){ f.className='feedback ok'; f.textContent='Shortest path confirmed.'; markSolved(2); }
+  else { f.className='feedback bad'; f.textContent=`Cost ${routeCost}. Valid path, but not the shortest one.`; }
+}
+
+function normalizeDateText(v){
+  const t=String(v).trim().replace(/[\/\-]/g,'.').replace(/\s+/g,'');
+  const m=t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if(!m) return t;
+  return `${m[1].padStart(2,'0')}.${m[2].padStart(2,'0')}.${m[3]}`;
+}
+function checkMemoryDates(){
+  const a=normalizeDateText(document.querySelector('#confessionDate').value);
+  const b=normalizeDateText(document.querySelector('#officialDate').value);
+  const f=document.querySelector('#f6dates');
+  if(a==='18.03.2026' && b==='03.04.2026'){
+    f.className='feedback ok'; f.textContent='Both memories recovered. Unfortunately, there is still one number left to expose.';
+    document.querySelector('#intervalStep').classList.remove('hidden');
+    document.querySelector('#checkDatesBtn').disabled=true;
+    document.querySelector('#confessionDate').disabled=true;
+    document.querySelector('#officialDate').disabled=true;
+    setTimeout(()=>document.querySelector('#intervalStep').scrollIntoView({behavior:'smooth',block:'center'}),250);
+  } else {
+    f.className='feedback bad';
+    if(a!=='18.03.2026' && b!=='03.04.2026') f.textContent='Neither date looks quite right yet.';
+    else if(a!=='18.03.2026') f.textContent='Ecopark is right. Recheck the Telegram date.';
+    else f.textContent='Telegram is right. Recheck the Ecopark date.';
+  }
+}
+
+function checkSimple(n, expected){
+  const input=document.querySelector(`#a${n}`); const f=document.querySelector(`#f${n}`); const val=Number(String(input.value).trim());
+  if(!input.value.trim()){ f.className='feedback bad'; f.textContent='Enter a value first.'; return; }
+  if(val===expected){ f.className='feedback ok'; f.textContent='Correct. Constant recovered.'; markSolved(n); }
+  else { f.className='feedback bad'; f.textContent='Not quite. Try again or open the hint.'; }
+}
+
+function applyDecoderState(){
+  const decoded=Math.max(0,Math.min(6,progress.decoded||0));
+  document.querySelectorAll('[data-decode-card]').forEach((card,i)=>{
+    card.classList.remove('active','waiting','found');
+    const status=card.querySelector('.tile-status');
+    if(i<decoded){
+      card.classList.add('found');
+      status.textContent='FOUND';
+    } else if(i===decoded && decoded<6){
+      card.classList.add('active');
+      status.textContent='ENTER SYMBOL';
+    } else {
+      card.classList.add('waiting');
+      status.textContent='LOCKED';
+    }
+  });
+  const entry=document.querySelector('#decodeEntry');
+  if(!entry) return;
+  if(decoded>=6){
+    entry.classList.add('hidden');
+  } else {
+    entry.classList.remove('hidden');
+    document.querySelector('#decodeCurrent').textContent=ELEMENTS[decoded].z;
+    const input=document.querySelector('#symbolAnswer');
+    if(input) input.value='';
+  }
+}
+function checkNextSymbol(){
+  const i=progress.decoded||0;
+  if(i>=6) return;
+  const input=document.querySelector('#symbolAnswer');
+  const f=document.querySelector('#f7');
+  const raw=String(input.value).trim().toLowerCase();
+  if(!raw){ f.className='feedback bad'; f.textContent='Enter a symbol first.'; return; }
+  if(raw===ELEMENTS[i].symbol.toLowerCase()){
+    progress.decoded=i+1; save(); applyDecoderState();
+    if(progress.decoded<6){
+      f.className='feedback ok'; f.textContent='Found. Next value unlocked.';
+      setTimeout(()=>document.querySelector('#symbolAnswer')?.focus(),180);
+    } else {
+      f.className='feedback ok'; f.textContent='All six identities recovered.';
+      setTimeout(showFinale,850);
+    }
+  } else {
+    f.className='feedback bad'; f.textContent='That symbol belongs somewhere else — or not to this value.';
+  }
+}
+function showFinale(){
+  progress.final=true; save();
+  document.querySelector('#decoder').classList.add('hidden');
+  document.querySelector('#finale').classList.add('show');
+  burst();
+  document.querySelector('#finale').scrollIntoView({behavior:'smooth'});
+}
+function burst(){
+  const colors=['#7ad7ff','#a9f0de','#ffd6a5','#ffffff'];
+  for(let i=0;i<70;i++){
+    const p=document.createElement('i'); p.className='particle'; p.style.left=(48+Math.random()*4)+'vw'; p.style.top=(45+Math.random()*10)+'vh';
+    p.style.background=colors[Math.floor(Math.random()*colors.length)];
+    p.style.setProperty('--x',(Math.random()*700-350)+'px'); p.style.setProperty('--y',(Math.random()*700-350)+'px');
+    p.style.animationDelay=(Math.random()*.25)+'s'; document.body.appendChild(p); setTimeout(()=>p.remove(),1800);
+  }
+}
+function restartGame(){
+  localStorage.removeItem(storeKey); location.reload();
+}
+
+document.querySelector('#symbolAnswer')?.addEventListener('keydown',e=>{ if(e.key==='Enter') checkNextSymbol(); });
+load();
+if(progress.solved[5]) document.querySelector('#intervalStep')?.classList.remove('hidden');
+</script>
+</body>
+</html>
