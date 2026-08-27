@@ -283,6 +283,105 @@
   .element-tile.halogen { border-color:rgba(241,214,93,.78); background:linear-gradient(145deg,rgba(241,214,93,.28),rgba(241,214,93,.08)); }
   .element-tile.nonmetal { border-color:rgba(113,215,231,.78); background:linear-gradient(145deg,rgba(113,215,231,.25),rgba(113,215,231,.07)); }
 
+
+
+  .gift-scene { margin:36px auto 0; max-width:920px; }
+  .gift-intro { color:#d2dde6; text-align:center; margin-bottom:14px; font-size:1rem; }
+  .gift-symbols { position:relative; min-height:72px; margin:0 auto 18px; }
+  .symbol-chip {
+    position:absolute; left:50%; top:0; transform:translate(-50%,0);
+    min-width:58px; padding:10px 14px; border-radius:14px; font-weight:900; letter-spacing:-.02em;
+    border:1px solid rgba(255,255,255,.25); backdrop-filter:blur(8px); box-shadow:0 12px 30px rgba(0,0,0,.2);
+    transition:transform 1.05s cubic-bezier(.22,.8,.2,1), opacity .7s ease, filter .9s ease;
+  }
+  .symbol-chip.lanthanide { background:#d8e6f3; color:#12385f; }
+  .symbol-chip.halogen { background:#d7e3f5; color:#1f63d0; }
+  .symbol-chip.nonmetal { background:#d9e5f5; color:#1d64d6; }
+  .chip-1 { transform:translate(-295px,0); }
+  .chip-2 { transform:translate(-180px,8px); }
+  .chip-3 { transform:translate(-70px,0); }
+  .chip-4 { transform:translate(55px,0); }
+  .chip-5 { transform:translate(170px,8px); }
+  .chip-6 { transform:translate(285px,0); }
+  .gift-scene.animate .symbol-chip { transform:translate(-50%,116px) scale(.76); opacity:.0; filter:blur(3px); }
+
+  .envelope-wrap { position:relative; display:flex; justify-content:center; align-items:flex-end; min-height:250px; }
+  .envelope-note { position:absolute; top:2px; text-transform:uppercase; letter-spacing:.18em; font-size:.72rem; color:#94aab9; }
+  .envelope {
+    position:relative; width:min(420px,88vw); height:250px; margin-top:18px; filter:drop-shadow(0 24px 40px rgba(0,0,0,.35));
+  }
+  .envelope-back, .envelope-front, .envelope-flap, .envelope-letter-peek, .lock-plate { position:absolute; }
+  .envelope-back {
+    inset:28px 0 0; border-radius:18px; background:linear-gradient(180deg,#f6ead4,#e6cfaa); border:1px solid rgba(98,66,23,.22);
+  }
+  .envelope-front {
+    left:0; right:0; bottom:0; height:170px; border-radius:18px; background:linear-gradient(180deg,#f1dcc0,#dcc09a); border:1px solid rgba(98,66,23,.22);
+    clip-path:polygon(0 100%,0 0,50% 58%,100% 0,100% 100%);
+  }
+  .envelope-flap {
+    left:0; right:0; top:28px; height:130px; transform-origin:top center; border-radius:18px 18px 8px 8px;
+    background:linear-gradient(180deg,#f7e6cb,#e4c8a2); border:1px solid rgba(98,66,23,.22); clip-path:polygon(0 0,100% 0,50% 100%);
+    transition:transform .95s cubic-bezier(.2,.8,.2,1), opacity .5s ease;
+    z-index:5;
+  }
+  .lock-plate {
+    z-index:8; left:50%; top:120px; transform:translate(-50%,0); width:74px; height:74px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #ffefb3, #d2a559); border:2px solid rgba(121,74,8,.4); display:grid; place-items:center;
+    font-size:1.8rem; transition:transform .7s ease, opacity .5s ease; box-shadow:0 10px 26px rgba(0,0,0,.28);
+  }
+  .envelope.unlocked .lock-plate { transform:translate(-50%,-28px) scale(.8) rotate(-18deg); opacity:0; }
+  .envelope.open .envelope-flap { transform:rotateX(180deg); opacity:.18; }
+
+  .letter-shell { max-height:0; overflow:hidden; transition:max-height 1.2s ease, margin-top .7s ease; }
+  .gift-scene.reveal-letter .letter-shell { max-height:2600px; margin-top:18px; }
+  .retro-letter {
+    position:relative; width:min(820px,100%); margin:0 auto; padding:42px 34px 38px; border-radius:14px; color:#4a3820;
+    background:
+      radial-gradient(circle at 12% 10%, rgba(255,255,255,.26), transparent 16%),
+      radial-gradient(circle at 88% 16%, rgba(143,98,39,.08), transparent 16%),
+      radial-gradient(circle at 24% 78%, rgba(143,98,39,.06), transparent 18%),
+      linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 18%),
+      linear-gradient(180deg, #f1dfb3 0%, #e5ce99 100%);
+    border:1px solid rgba(112,78,30,.34); box-shadow:0 28px 60px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.1);
+    font-family: Georgia, 'Times New Roman', serif; line-height:1.85; text-align:left;
+  }
+  .retro-letter::before {
+    content:""; position:absolute; inset:0; border-radius:14px; pointer-events:none;
+    background:linear-gradient(90deg, rgba(92,58,16,.03) 0, rgba(92,58,16,0) 18%, rgba(92,58,16,0) 82%, rgba(92,58,16,.03) 100%);
+    mix-blend-mode:multiply;
+  }
+  .retro-letter::after {
+    content:""; position:absolute; inset:10px; border-radius:10px; pointer-events:none; border:1px dashed rgba(111,77,34,.24);
+  }
+  .paper-pin {
+    position:absolute; width:62px; height:12px; top:-5px; left:50%; transform:translateX(-50%) rotate(-2deg);
+    background:linear-gradient(180deg, rgba(230,204,146,.92), rgba(186,152,84,.92)); border-radius:999px; opacity:.8;
+    box-shadow:0 4px 8px rgba(0,0,0,.18);
+  }
+  .letter-title { font-size:2rem; margin:0 0 18px; letter-spacing:-.02em; }
+  .letter-paragraph { margin:0 0 16px; font-size:1.08rem; }
+  .letter-signoff { margin-top:18px; font-size:1.12rem; }
+  .letter-date { margin-top:10px; font-size:1rem; }
+
+  @media (max-width: 760px) {
+    .gift-symbols { min-height:120px; }
+    .chip-1 { transform:translate(-145px,0); }
+    .chip-2 { transform:translate(-48px,0); }
+    .chip-3 { transform:translate(50px,0); }
+    .chip-4 { transform:translate(-145px,48px); }
+    .chip-5 { transform:translate(-48px,48px); }
+    .chip-6 { transform:translate(50px,48px); }
+    .gift-scene.animate .symbol-chip { transform:translate(-50%,156px) scale(.72); }
+    .envelope { height:220px; }
+    .envelope-back { inset:26px 0 0; }
+    .envelope-front { height:150px; }
+    .envelope-flap { top:26px; height:118px; }
+    .lock-plate { top:104px; width:66px; height:66px; }
+    .retro-letter { padding:34px 22px 30px; }
+    .letter-title { font-size:1.55rem; }
+    .letter-paragraph { font-size:1rem; }
+  }
+
   .footer-actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:30px; }
   .hidden { display:none !important; }
 
@@ -534,23 +633,56 @@
         <div class="element-tile nonmetal"><div class="z">16</div><div class="symbol">S</div><div class="name">Sulfur</div></div>
       </div>
       <div class="princess">PRINCESS</div>
-      <p class="final-copy"><strong>Congratulations, my Princess!</strong><br>You solved every little clue. Apparently those six values were only trying to tell you what I already knew.</p>
+      <p class="final-copy"><strong>Congratulations, my Princess!</strong><br>You solved every little clue. And now the six symbols seem ready to unlock your final gift.</p>
 
-      <div class="destination">
-        <div class="label">Next destination unlocked</div>
-        <h3>SKKU · Suwon · South Korea</h3>
-        <p>Your next chapter is waiting there. See you there, my Princess — and good luck with your master’s journey. I’ll be cheering for you all the way.</p>
-        <div class="coords">DESTINATION_STATUS = READY // MASTER'S JOURNEY</div>
+      <div class="gift-scene" id="giftScene">
+        <div class="gift-intro">Watch closely — the six symbols seem to fit together like a key.</div>
+        <div class="gift-symbols" aria-hidden="true">
+          <span class="symbol-chip lanthanide chip-1">Pr</span>
+          <span class="symbol-chip halogen chip-2">I</span>
+          <span class="symbol-chip nonmetal chip-3">N</span>
+          <span class="symbol-chip lanthanide chip-4">Ce</span>
+          <span class="symbol-chip nonmetal chip-5">S</span>
+          <span class="symbol-chip nonmetal chip-6">S</span>
+        </div>
+        <div class="envelope-wrap">
+          <div class="envelope-note">final gift</div>
+          <div class="envelope locked" id="envelopeGift">
+            <div class="envelope-back"></div>
+            <div class="envelope-flap"></div>
+            <div class="lock-plate">🔒</div>
+            <div class="envelope-front"></div>
+          </div>
+        </div>
+        <div class="letter-shell" id="letterShell">
+          <article class="retro-letter">
+            <div class="paper-pin" aria-hidden="true"></div>
+            <h3 class="letter-title">To the Love of my Life,</h3>
+            <p class="letter-paragraph">We knew each other for 4 years, were friends for a year, but really together for only 5 months. I wish I had told you much earlier about my feelings, so we had more time to spend together and plan our future studies in advance.</p>
+            <p class="letter-paragraph">But people say: “Все что не случается, все к лучшему”. And maybe they are right?</p>
+            <p class="letter-paragraph">Just imagine if I didn’t reject the invitation to TopUni Camp, we could get closer two years earlier?! Sounds fantastic, right? But I don’t think I could be a good match for you after our sophomore year. You told me recently that I am still too “young” regarding my emotional intelligence (and I agree with you that), so just imagine how it was two years earlier? I think our relationship wouldn’t last even 2-3 months…</p>
+            <p class="letter-paragraph">So coming to the previous point, probably it was the best time for both of us to get to know each other specifically in South Korea during the Summer School 2025.</p>
+            <p class="letter-paragraph">Every time we walk in the city you always have dozens of questions about our future and present, which I try to answer as honestly and detailed as possible, but sometimes I don’t have an answer for some of them.</p>
+            <p class="letter-paragraph">And every time you wonder, why I don’t have questions to ask from you. Sometimes you may think that I do not consider our relationship seriously, but that’s not the case! Frankly speaking, I also have questions, sometimes even more than you have, but…</p>
+            <p class="letter-paragraph">But I’m just afraid that some of them may sound weird to you, some of them may hurt your feelings, or I can select wrong words while asking you… All of these make me think thousands of times before I can say anything to you.</p>
+            <p class="letter-paragraph">Что-то слишком много о грустном, не думаешь?</p>
+            <p class="letter-paragraph">Talking about good things, I am working on improving myself in terms of physical capabilities, mental maturity, and financial stability! From some concrete steps taken, I can say: purchased a 1Fit 365 subscription, ordered a book recommended by you, and got a promotion at Uzum (coming soon!).</p>
+            <p class="letter-paragraph">To conclude all of this, I can surely say that I am sooooooo happy that you’re with me, you’re the reason I am pushing myself forward and setting higher goals.</p>
+            <p class="letter-paragraph">I respect you, I trust you, and I love you &lt;3</p>
+            <div class="letter-signoff">Your “Moonzy”</div>
+            <div class="letter-date">27.08.2026</div>
+          </article>
+        </div>
       </div>
 
-      <div class="footer-actions"><button class="btn" onclick="restartGame()">Play it again</button></div>
+      <div class="footer-actions"><button class="btn" onclick="replayGift()">Replay the gift</button><button class="btn" onclick="restartGame()">Play it again</button></div>
     </div>
   </section>
 </main>
 
 <script>
 const ANSWERS = [59,53,7,58,16,16];
-const storeKey = 'p6_princess_progress_v3';
+const storeKey = 'p6_princess_progress_v4';
 let progress = { solved:[false,false,false,false,false,false], decoded:0, final:false };
 const ELEMENTS = [
   {z:59,symbol:'Pr',name:'Praseodymium',mass:'140.91',kind:'lanthanide'},
@@ -597,6 +729,7 @@ function applyProgress(scroll=false){
   if(progress.final){
     document.querySelector('#finale').classList.add('show');
     document.querySelector('#decoder').classList.add('hidden');
+    setTimeout(startGiftSequence, 120);
   }
   if(scroll) resumeProgress();
 }
@@ -749,6 +882,25 @@ function showFinale(){
   document.querySelector('#finale').classList.add('show');
   burst();
   document.querySelector('#finale').scrollIntoView({behavior:'smooth'});
+  startGiftSequence();
+}
+function startGiftSequence(){
+  const scene=document.querySelector('#giftScene');
+  const env=document.querySelector('#envelopeGift');
+  const shell=document.querySelector('#letterShell');
+  if(!scene || !env || !shell) return;
+  scene.classList.remove('animate','reveal-letter');
+  env.classList.remove('unlocked','open');
+  shell.scrollTop=0;
+  setTimeout(()=>scene.classList.add('animate'), 700);
+  setTimeout(()=>env.classList.add('unlocked'), 1650);
+  setTimeout(()=>env.classList.add('open'), 2350);
+  setTimeout(()=>scene.classList.add('reveal-letter'), 3000);
+}
+function replayGift(){
+  if(!progress.final) return;
+  startGiftSequence();
+  document.querySelector('#letterShell')?.scrollIntoView({behavior:'smooth', block:'center'});
 }
 function burst(){
   const colors=['#7ad7ff','#a9f0de','#ffd6a5','#ffffff'];
