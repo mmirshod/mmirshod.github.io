@@ -573,9 +573,9 @@
       <div class="card"><div class="card-inner">
         <p class="prompt">First, recover the two dates. One was the night I finally said how I felt on <strong>Telegram</strong>. The other was the day in <strong>Ecopark</strong> when I asked whether we should officially start dating.</p>
         <div class="timeline" id="dateEntryTimeline">
-          <div class="time-card"><div class="place">TELEGRAM</div><p>I finally said it.</p><input class="answer-input date-entry" id="confessionDate" placeholder="DD.MM.YYYY" inputmode="numeric"/></div>
+          <div class="time-card"><div class="place">TELEGRAM</div><p>I finally said it.</p><input class="answer-input date-entry" id="confessionDate" type="date" aria-label="Telegram confession date"/></div>
           <div class="arrow">→</div>
-          <div class="time-card"><div class="place">ECOPARK</div><p>I finally asked.</p><input class="answer-input date-entry" id="officialDate" placeholder="DD.MM.YYYY" inputmode="numeric"/></div>
+          <div class="time-card"><div class="place">ECOPARK</div><p>I finally asked.</p><input class="answer-input date-entry" id="officialDate" type="date" aria-label="Ecopark official dating date"/></div>
         </div>
         <div class="answer-row"><button class="btn primary" id="checkDatesBtn" onclick="checkMemoryDates()">Check the dates</button></div>
         <div class="feedback" id="f6dates"></div>
@@ -682,7 +682,7 @@
 
 <script>
 const ANSWERS = [59,53,7,58,16,16];
-const storeKey = 'p6_princess_progress_v4';
+const storeKey = 'p6_princess_progress_v5';
 let progress = { solved:[false,false,false,false,false,false], decoded:0, final:false };
 const ELEMENTS = [
   {z:59,symbol:'Pr',name:'Praseodymium',mass:'140.91',kind:'lanthanide'},
@@ -798,7 +798,11 @@ function checkRoute(){
 }
 
 function normalizeDateText(v){
-  const t=String(v).trim().replace(/[\/\-]/g,'.').replace(/\s+/g,'');
+  const raw=String(v).trim();
+  if(!raw) return raw;
+  const iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(iso) return `${iso[3]}.${iso[2]}.${iso[1]}`;
+  const t=raw.replace(/[\/\-]/g,'.').replace(/\s+/g,'');
   const m=t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
   if(!m) return t;
   return `${m[1].padStart(2,'0')}.${m[2].padStart(2,'0')}.${m[3]}`;
